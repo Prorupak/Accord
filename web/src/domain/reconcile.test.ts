@@ -266,6 +266,16 @@ describe("proposals", () => {
     expect(recordAnalysis(later, s.generation, s.context.configurationHash, { ...s.analysis, status: "complete" })).toBe(later);
   });
 
+  it("treats a replayed batch as a no-op, without bumping revision", async () => {
+    const s = await fixture();
+    const once = addProposals(s, batch(s, [suggest(rowA(s, 0), rowB(s, 0), s)])).state;
+    const twice = addProposals(once, batch(s, [suggest(rowA(s, 0), rowB(s, 0), s)]));
+    expect(twice).toMatchObject({ stale: false, added: 0 });
+    expect(twice.state).toBe(once);
+    const replaced = addProposals(once, batch(s, [suggest(rowA(s, 0), rowB(s, 0), s)], "r2")).state;
+    expect(replaced.proposals.map((p) => p.id)).toEqual([`r2:${rowA(s, 0)}`]);
+  });
+
   it("drops invented rows, conflicting targets, duplicates and altered or one-sided evidence", async () => {
     const s = await fixture();
     const good = suggest(rowA(s, 0), rowB(s, 0), s);

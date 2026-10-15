@@ -43,7 +43,7 @@ DraftConfiguration ──validateConfiguration──▶ Configuration ──conf
 
 Every transition is pure: it returns a new state and never mutates the old one. A failed
 decision returns the *same* state object plus a typed `{code, message}` that the UI can display.
-That is the shape the next phase's `useReducer` needs.
+The workflow reducer built on this is described in `workflow-state.md`.
 
 ## Ingestion
 
@@ -170,6 +170,7 @@ Proposal status is derived, not stored (`pending | accepted | rejected | unavail
 - It drops individual proposals that name an unknown row, duplicate a row, have an invalid target, or cite evidence that doesn't exactly equal a real cell (or covers only one side).
 - It assigns app IDs `<requestId>:<leftId>`.
 - It replaces older proposals for the same rows unless a decision references them.
+- It treats a proposal ID that is already present as a replay of the same request, so a replayed batch returns the same state.
 
 `nextGeneration` advances the generation so late results are ignored.
 

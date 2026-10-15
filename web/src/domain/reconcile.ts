@@ -32,6 +32,7 @@ export type ReconciliationState = PairLedger & {
 
 export const exactPairId = (leftId: RowId, rightId: RowId) => `exact:${leftId}:${rightId}`;
 export const decisionPairId = (decisionId: string) => `decision:${decisionId}`;
+export const proposalIdOf = (requestId: string, leftId: RowId) => `${requestId}:${leftId}`;
 
 function exactPair(ctx: ReconciliationContext, leftId: RowId, rightId: RowId): Pair {
   return {
@@ -234,14 +235,15 @@ export function addProposals(state: ReconciliationState, batch: ProposalBatch): 
     const reason = seen.has(p.leftId) ? "duplicate_result" : proposalDefect(ctx, p);
     seen.add(p.leftId);
     if (reason) dropped.push({ leftId: p.leftId, reason });
-    else accepted.push({ ...p, id: `${batch.requestId}:${p.leftId}`, generation: batch.generation, configurationHash: batch.configurationHash });
+    else accepted.push({ ...p, id: proposalIdOf(batch.requestId, p.leftId), generation: batch.generation, configurationHash: batch.configurationHash });
   }
 
+  // A proposal ID already present is a replay of the same request, not a replacement.
+  const existing = new Set(state.proposals.map((p) => p.id));
+  const fresh = accepted.filter((p) => !existing.has(p.id));
   const referenced = new Set(state.decisions.map((d) => d.proposalId));
-  const replaced = new Set(accepted.map((p) => p.leftId));
+  const replaced = new Set(fresh.map((p) => p.leftId));
   const kept = state.proposals.filter((p) => referenced.has(p.id) || !replaced.has(p.leftId));
-  const keptIds = new Set(kept.map((p) => p.id));
-  const fresh = accepted.filter((p) => !keptIds.has(p.id));
   return {
     state: fresh.length > 0 ? { ...state, proposals: [...kept, ...fresh], revision: state.revision + 1 } : state,
     stale: false,
