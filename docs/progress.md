@@ -2,6 +2,66 @@
 
 Last updated: 2026-10-15
 
+## Phase 03-III (2026-10-15): functional application
+
+Done. `web/` now has a working app instead of the Next starter page. It covers import, mapping,
+review and decisions, AI suggestions and export, all through the existing domain, reducer and
+orchestrator. The styling is deliberately plain; visual design is Phase 04. The backend is unchanged.
+
+- **New `web/src/ui/`:**
+  - `AccordApp.tsx`: the only caller of `useAccordWorkflow` and `useSuggestAnalysis`. It renders
+    the stage navigation (gated by `canEnterStage`), the typed error banner, and "Start over".
+  - Screens: `ImportScreen`, `MappingScreen`, `ReviewScreen` with `RecordDetail` and
+    `AnalysisPanel`, and `ExportScreen`.
+  - `reviewRows.ts`: the derived review table model, recomputed each render.
+  - `useExportArtifacts.ts`: the snapshot and Blob URL lifecycle.
+- **New `web/src/analysis/mapSuggestion.ts`:** a strict `/api/map` client. It sends headers and
+  five samples per side and produces drafts that are applied only on an explicit click.
+- **Small API changes:**
+  - `useAccordWorkflow().confirmMappings(approve?)` lets the mapping screen ask before a remap
+    discards decisions.
+  - `readApiError` was extracted from `response.ts` so both clients map server errors the same
+    way. Behavior is unchanged.
+- **Sample data:** `app/page.tsx` reads `fixtures/inventory/*.csv` at build time. "Try sample
+  data" sends them through `chooseFile` like any user file.
+- **Export:**
+  - Each explicit prepare calls `prepareExport` once and creates three Blob URLs. If any URL
+    fails, the ones already created are revoked.
+  - Links render only while `isSnapshotCurrent` holds and the reconciliation context is the same
+    object, so a reload of the same file confirmed with the same mapping also invalidates them.
+  - Stale entries and unmount revoke the URLs. Link clicks re-check validity.
+- **Tests:**
+  - Vitest: 51 new tests. `reviewRows`, `mapSuggestion`, `useExportArtifacts`, and an
+    `AccordApp` integration suite that drives the real app in jsdom, with `fetch`, `confirm` and
+    `URL.createObjectURL` stubbed at the browser boundary.
+  - Playwright (`web/e2e/`, new dev dependency `@playwright/test` 1.64.0): three tests.
+    - Canonical path: export, parse the files, and `replayAudit` on the downloaded audit.
+    - `UPSTREAM_ERROR` path with a manual pair, then export.
+    - 390 px layout check.
+  - AI responses come from `page.route`, and a catch-all aborts any unstubbed `/api/*` call.
+
+| Check (run 2026-10-15) | Result |
+| --- | --- |
+| `pnpm test` (web) | 21 files, 351 tests passed (300 existing, 51 new) |
+| `npx tsc --noEmit` / `pnpm lint` / `pnpm build` (web) | Clean; `/` prerendered static |
+| `pnpm exec playwright test` (web) | 3 passed (Chromium, production build) |
+| `uv run pytest -q` (api) | 41 passed |
+| `uv run ruff check .` / `ruff format --check .` | Clean |
+| Layout | Checked with headless Chromium at 1440, 1024 and 390 px: no page overflow, table unclipped on desktop |
+
+**Live provider: not run in this phase.** The last result is still the Phase 03-II 502
+`UPSTREAM_ERROR`. The app shows that error and keeps manual reconciliation and export working.
+A successful live run stays a separate release gate.
+
+Open after this phase:
+
+1. Live `/api/map` and `/api/suggest` runs through the UI with a model that supports strict JSON schema.
+2. A manual keyboard-only and screen-reader pass. Focus order and labels were checked through
+   tests and screenshots, not with assistive technology.
+3. Phase 04 visual design. Not built: elapsed time in the run panel, an event list, focus return
+   after decisions beyond keeping the selected record, and a reduced-motion audit (there is no
+   motion today).
+
 ## Phase 03-II (2026-10-15): AI orchestration for `/api/suggest`
 
 Done. The browser can now run a bounded, verified semantic-suggestion pass. Design notes are in
