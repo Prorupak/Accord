@@ -207,7 +207,7 @@ Each unmatched row gets one primary reason. They're checked in the §6 priority 
    - `rejected` (an exact-pair exclusion or a rejected suggestion).
 3. **Analysis:**
    - `ambiguous` (an ambiguous abstention)
-   - `analysis_failed`
+   - `analysis_failed` (the row failed, or the run failed before reaching it)
    - `analysis_cancelled`
    - `no_candidates`
    - `analysis_limit` (eligible, but outside the pass's selected rows)

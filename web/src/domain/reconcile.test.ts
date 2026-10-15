@@ -330,6 +330,8 @@ describe("unresolved reasons", () => {
     });
     expect(unresolvedReason(ran, rowA(s, 2)).reason).toBe("analysis_cancelled");
     expect(unresolvedReason(ran, rowA(s, 3)).reason).toBe("analysis_limit");
+    const stopped = recordAnalysis(s, s.generation, s.context.configurationHash, { ...ran.analysis, status: "failed" });
+    expect(unresolvedReason(stopped, rowA(s, 2))).toMatchObject({ reason: "analysis_failed", detail: "Analysis stopped before this record was reviewed." });
     const failed = recordAnalysis(s, s.generation, s.context.configurationHash, {
       status: "partial",
       selectedRowIds: [rowA(s, 2)],

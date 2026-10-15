@@ -109,8 +109,11 @@ There is no generic setter. The `default` branch is an exhaustive `never` check.
   never processed.
 - **Cancelled.** The status becomes `cancelled`. Accounting and proposals are kept. Unprocessed
   rows get the reason `analysis_cancelled`.
-- **Failed.** The status becomes `failed`. Unprocessed selected rows go to `failedRowIds`, and
-  `error` is set to `analysis_failed`. Pairs, decisions, proposals and accounting are kept.
+- **Failed.** The status becomes `failed`, and `error` is set to `analysis_failed`. Pairs,
+  decisions, proposals and accounting are kept. Selected rows the run never reached stay
+  unprocessed rather than going to `failedRowIds`, so the audit counts only rows that were actually
+  attempted. They are still explained as `analysis_failed` ("Analysis stopped before this record
+  was reviewed").
 - **Every terminal transition then calls `nextGeneration`.** A late event for that run fails both
   the workflow guard and the domain's own generation checks. A new run after a reconfiguration
   can reuse a generation number, because `initializeState` restarts it at 0. The hash still

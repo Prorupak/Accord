@@ -357,6 +357,8 @@ export function unresolvedReason(state: ReconciliationState, rowId: RowId): Unre
   const selected = state.analysis.selectedRowIds.includes(rowId);
   if (selected && !state.analysis.analyzedRowIds.includes(rowId) && state.analysis.status === "cancelled")
     return r("analysis_cancelled", "Analysis was cancelled before this record was reviewed.");
+  if (selected && !state.analysis.analyzedRowIds.includes(rowId) && state.analysis.status === "failed")
+    return r("analysis_failed", "Analysis stopped before this record was reviewed.");
   if (candidates.length === 0) return r("no_candidates", "No Source B record shares name words; use manual selection.");
   if (!selected && state.analysis.status !== "idle")
     return r("analysis_limit", "Outside the per-pass AI review limit; manual review is available.");

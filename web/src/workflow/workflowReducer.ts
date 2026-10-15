@@ -193,7 +193,7 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
       if (!rec) return state;
       return {
         ...state,
-        reconciliation: finish(rec, { status: "failed", failed: unprocessed(rec.analysis) }),
+        reconciliation: finish(rec, { status: "failed" }),
         error: { kind: "analysis_failed", message: action.message },
       };
     }

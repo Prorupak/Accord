@@ -130,12 +130,14 @@ describe("terminal transitions", () => {
     expectInvariants(accepted);
   });
 
-  it("failure keeps pairs, decisions, proposals and accounting, marks unprocessed rows and shows an error", async () => {
+  it("failure keeps pairs, decisions, proposals and accounting, leaves unreached rows unprocessed and shows an error", async () => {
     let s = await started();
     s = workflowReducer(s, batch(s, "r1", [suggestion(s, rowA(s, 1), rowB(s, 1))], [rowA(s, 1)]));
     s = workflowReducer(s, decide(s, "reject", rowA(s, 1), rowB(s, 1)));
     const failed = workflowReducer(s, { type: "analysis/failed", ...runRef(s), message: "The model service is unavailable." });
-    expect(rec(failed).analysis).toMatchObject({ status: "failed", analyzedRowIds: [rowA(s, 1)], failedRowIds: [rowA(s, 3)] });
+    expect(rec(failed).analysis).toMatchObject({ status: "failed", analyzedRowIds: [rowA(s, 1)], failedRowIds: [] });
+    // Never sent, so not counted as failed, but still explained as a failed analysis.
+    expect(unresolvedReason(rec(failed), rowA(s, 3)).reason).toBe("analysis_failed");
     expect(rec(failed).acceptedPairs).toBe(rec(s).acceptedPairs);
     expect(rec(failed).decisions).toBe(rec(s).decisions);
     expect(rec(failed).proposals).toBe(rec(s).proposals);
