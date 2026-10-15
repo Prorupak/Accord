@@ -2,6 +2,48 @@
 
 Last updated: 2026-10-15
 
+## Phase 02 (2026-10-15): deterministic reconciliation engine
+
+The browser-side domain engine is now built in `web/src/domain/` (design notes in
+`docs/domain-engine.md`). It has no UI wiring yet, and it does not call the API.
+
+- **CSV ingestion:** strict parsing (§4.1).
+  - SHA-256 over the original bytes, fatal UTF-8 decoding, BOM handling.
+  - Positional columns, side-qualified row IDs, blank-record counting.
+  - Typed errors that never include cell values.
+- **Mapping and configuration:** validation, and a fixed-tuple configuration hash.
+- **Exact-ID matching:**
+  - Duplicate-ID quarantine applied on both sides.
+  - A single eligibility policy (`checkPair`) shared by every matching path.
+- **Candidates:** lexical retrieval (NFKC, case fold, token-set Jaccard; top five; ties broken by B index) plus a manual-picker set.
+- **Quantities:** BigInt arithmetic in thousandths, with unit rules (§4.6).
+- **Decisions:** accept, reject, defer, exclude-exact and undo, plus proposal intake with generation and hash guards.
+- **Invariants:** an invariant checker, with export blocked whenever a check fails.
+- **Export and replay:**
+  - `matches.csv`, `unresolved.csv` and `audit.json` built from one revision, with formula protection.
+  - A pure `replayAudit`.
+- **Fixtures:** `fixtures/inventory/source-{a,b}.csv` (spec §13.1).
+- **Web changes:**
+  - Added dependencies, at exact versions: `papaparse` 5.7.0, `zod` 4.6.7, `@types/papaparse` 5.5.2, `vitest` 5.0.4.
+  - Added a `test` script.
+  - Raised the `tsconfig` target from ES2017 to ES2020, which BigInt literals and Unicode property regexes require.
+- **Audit schema:** the only addition is three row-ID lists in `audit.analysis`. See `domain-engine.md`.
+
+| Check (run 2026-10-15) | Result |
+| --- | --- |
+| `pnpm test` (web) | 8 files, 174 tests passed |
+| `npx tsc --noEmit` (web) | Clean |
+| `pnpm lint` (web) | Clean |
+| `pnpm build` (web) | Succeeded |
+| `uv run pytest -q` (api, unchanged) | 35 passed |
+| `uv run ruff check .` / `ruff format --check .` | Clean |
+
+The canonical fixture integration test passes. It produces 3 accepted pairs (P01 and P03 by ID, plus tote/bag by an injected manual decision), 1 unmatched A row, 2 unmatched B rows and a P03 delta of `-1`. Replaying the serialized audit reproduces both CSVs byte for byte.
+
+Still open: the workflow reducer and UI, the `/api/suggest` request builder and client-side response schema, AI-context clipping, cancellation orchestration, browser downloads, the eval harness, and live inference.
+
+The phase 01 report below is kept as written, except for item 5 under Open items.
+
 ## Summary
 
 The FastAPI backend is built and tested. It sits behind the existing Next.js app through a dev
@@ -88,7 +130,7 @@ What it enforces:
    missing strict-schema support. The live run will show whether OpenRouter's wording matches.
 4. **Frontend.** The upload, mapping, review and export UI from the spec is not built. Nothing
    calls the API yet.
-5. **Nothing is committed.** All work is untracked on `main`.
+5. ~~Nothing is committed.~~ Superseded: phase 01 was merged to `develop` in PR #1.
 
 ## Running locally
 
@@ -97,5 +139,5 @@ What it enforces:
 cd api && uv sync && uv run python -m app      # http://127.0.0.1:8000/docs
 
 # terminal 2
-cd web && npm run dev                          # http://localhost:3000
+cd web && pnpm dev                          # http://localhost:3000
 ```
