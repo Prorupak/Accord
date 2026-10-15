@@ -87,6 +87,10 @@ There is no generic setter. The `default` branch is an exhaustive `never` check.
   - Otherwise a fresh `initializeState` replaces reconciliation, and every earlier decision and
     proposal is dropped.
 - **Draft edits after confirmation** do not touch reconciliation until the user confirms again.
+- **Confirming over existing work.** `confirmMappings(approve?)` passes the prepared
+  `mapping/confirmed` action to `approve` before dispatching it. The mapping screen uses this to
+  ask the user only when the new hash differs and the current reconciliation has decisions or
+  proposals. Declining dispatches nothing. Without `approve` the hook behaves as before.
 
 ## 5. Runs, generations and staleness
 
