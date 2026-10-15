@@ -1,0 +1,32 @@
+[project]
+name = "accord-api"
+version = "0.1.0"
+description = "Bounded inference API for Accord"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.143.1",
+    "openai>=3.31.0",
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.16.0",
+    "uvicorn>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "ruff>=0.17.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
