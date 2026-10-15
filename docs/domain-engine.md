@@ -167,7 +167,9 @@ Proposal status is derived, not stored (`pending | accepted | rejected | unavail
 `addProposals` is the client-side re-validation of `/api/suggest` output:
 
 - It drops the whole batch when the generation or configuration hash is stale.
-- It drops individual proposals that name an unknown row, duplicate a row, have an invalid target, or cite evidence that doesn't exactly equal a real cell (or covers only one side).
+- It drops individual proposals that name an unknown row, duplicate a row, or have an invalid target. It also drops proposals whose evidence doesn't exactly equal the §7.4 projection of a real cell (the whole cell unless it is over 160 code points; see `aiContext.ts`), or covers only one side.
+- Evidence ownership: a suggestion may cite only its own two rows. An abstention may also cite any Source B row, for example the competing candidates of an ambiguous row. Abstentions reserve nothing.
+- Fail closed (`truncated_context`): a suggestion is dropped if the mapped name or product ID of either row was clipped for the model, because hidden text could change the product. Manual review stays available. Abstentions over clipped text are kept.
 - It assigns app IDs `<requestId>:<leftId>`.
 - It replaces older proposals for the same rows unless a decision references them.
 - It treats a proposal ID that is already present as a replay of the same request, so a replayed batch returns the same state.
@@ -207,9 +209,10 @@ Each unmatched row gets one primary reason. They're checked in the §6 priority 
    - `rejected` (an exact-pair exclusion or a rejected suggestion).
 3. **Analysis:**
    - `ambiguous` (an ambiguous abstention)
-   - `analysis_failed` (the row failed, or the run failed before reaching it)
+   - `analysis_failed` (the row failed)
+   - `no_candidates` (checked before the run-level reasons below: a row with nothing to retrieve could not have been analyzed)
+   - `analysis_failed` (the run failed before reaching it)
    - `analysis_cancelled`
-   - `no_candidates`
    - `analysis_limit` (eligible, but outside the pass's selected rows)
 4. **Otherwise:** `unpaired`, with a detail such as "Suggested pair awaiting review".
 
@@ -261,11 +264,11 @@ Replay verifies semantics, not the original file bytes. Dataset IDs are checked 
 
 ## Integration boundary with the FastAPI service
 
-The API never sees engine state. When the browser calls `/api/suggest` it will:
+The API never sees engine state. The browser side is built in `web/src/analysis/` and documented in `docs/ai-orchestration.md`. In short, it:
 
-1. Pick up to 20 rows from `analysisEligibleRows(state)`.
-2. Send batches of five, each row with its `candidatesFor` set. Fields are the mapped name and product ID as `EvidenceRef`s. Quantities are never sent.
-3. Pass the response's `proposals` to `addProposals` with the echoed `requestId`, `generation` and `configurationHash`.
+1. Picks up to 20 rows from `analysisEligibleRows(state)`.
+2. Sends batches of five, each row with its `candidatesFor` set. Fields come from `contextFields`: the mapped name and product ID as `EvidenceRef`s, clipped to 160 code points. Quantities are never sent.
+3. Passes the response's `proposals` to `addProposals` with the echoed `requestId`, `generation` and `configurationHash`.
 
 The API's verification and the engine's `proposalDefect` check overlap on purpose (§5.2). The API's `Proposal` has no `id`; the engine assigns it. `meta.promptVersion` is an integer in the API and is stored as a string in `modelRuns`.
 
@@ -277,7 +280,7 @@ The API's verification and the engine's `proposalDefect` check overlap on purpos
 - Retrieval misses true synonyms with zero token overlap. The manual picker covers them.
 - Rows with empty names can't be paired semantically or manually; only exact ID can pair them.
 - A rejected pair can't be accepted until the rejection is undone. An excluded exact pair can be restored only by undo.
-- Evidence must equal the full source cell. The 160-character AI-context clipping in §7.4 isn't built yet, and clipped evidence will need the matching rule once it is.
+- AI context is clipped by code points, not grapheme clusters, so a clip can separate a combining mark from its base character. The result is still an exact prefix of the cell, and it is deterministic across engines.
 - `audit.analysis` adds `selectedRowIds`, `analyzedRowIds` and `failedRowIds` to the spec's counts so replay can rebuild analysis-dependent reasons. This is the only schema addition.
 
 ## Running the tests

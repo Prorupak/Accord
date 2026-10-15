@@ -106,7 +106,10 @@ There is no generic setter. The `default` branch is an exhaustive `never` check.
   runs only if the record changed, so a duplicate batch returns the identical state.
 - **Batch failed.** The rows go to `failedRowIds`. They are never counted as analyzed.
 - **Completed.** The status becomes `complete`, or `partial` when any selected row failed or was
-  never processed.
+  never processed while it still had candidates. A row that a human paired, or whose candidates were
+  all paired or rejected during the run, no longer needs inference. The orchestrator does not send
+  it, it is not counted as analyzed or failed, and it keeps its own reason (usually
+  `no_candidates`).
 - **Cancelled.** The status becomes `cancelled`. Accounting and proposals are kept. Unprocessed
   rows get the reason `analysis_cancelled`.
 - **Failed.** The status becomes `failed`, and `error` is set to `analysis_failed`. Pairs,
@@ -182,6 +185,6 @@ The orchestrator:
 3. Finishes with `analysis/completed`, `analysis/cancelled` or `analysis/failed {message}`, each
    carrying the same `RunRef`.
 
-It never compares generations itself: outdated events are dropped by the reducer. The reducer
+Implemented in Phase 03-II; see `docs/ai-orchestration.md`. It never compares generations itself: outdated events are dropped by the reducer. The reducer
 knows nothing about HTTP, OpenRouter, retries, scheduling, Zod or `AbortController`.
 `isStaleResult` lets the orchestrator skip work early, for example to stop scheduling batches.
