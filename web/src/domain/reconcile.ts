@@ -1,3 +1,4 @@
+import { identityContextTruncated, projectContext } from "./aiContext";
 import { blockedByIdConflict, candidatesFor } from "./candidates";
 import {
   checkIdentity,
@@ -8,7 +9,7 @@ import {
   type PairLedger,
   type ReconciliationContext,
 } from "./eligibility";
-import type { Pair, Proposal, RowId, RowPair, TaskStatus, UnresolvedReason, UserDecision } from "./types";
+import type { EvidenceRef, Pair, Proposal, RowId, RowPair, TaskStatus, UnresolvedReason, UserDecision } from "./types";
 
 // Minimum analysis bookkeeping needed to explain unresolved rows (§6 reason codes). The async
 // pass that fills it belongs to the workflow reducer.
@@ -210,7 +211,10 @@ export type ProposalBatch = {
   proposals: readonly IncomingProposal[];
 };
 
-export type ProposalRejection = { leftId: string; reason: "unknown_row" | "duplicate_result" | "invalid_target" | "invalid_evidence" };
+export type ProposalRejection = {
+  leftId: string;
+  reason: "unknown_row" | "duplicate_result" | "invalid_target" | "invalid_evidence" | "truncated_context";
+};
 
 export type ProposalIntake = {
   state: ReconciliationState;
@@ -253,7 +257,8 @@ export function addProposals(state: ReconciliationState, batch: ProposalBatch): 
 }
 
 // Static checks on one proposal: real Source A row, a policy-eligible target for a suggestion
-// (none for an abstention), and evidence citing real cells with exactly equal values.
+// (none for an abstention), and evidence citing real cells with values equal to what the model
+// was shown: the §7.4 projection, which is the whole cell unless it was clipped.
 export function proposalDefect(ctx: ReconciliationContext, p: IncomingProposal): ProposalRejection["reason"] | null {
   const left = ctx.rows.get(p.leftId);
   if (!left || left.side !== "A") return "unknown_row";
@@ -261,17 +266,23 @@ export function proposalDefect(ctx: ReconciliationContext, p: IncomingProposal):
     p.outcome === "suggest" ? p.rightId !== null && checkIdentity(ctx, p.leftId, p.rightId, "semantic").ok : p.rightId === null;
   if (!targetOk) return "invalid_target";
 
-  const owners = new Map<RowId, "A" | "B">([[p.leftId, "A"]]);
-  if (p.rightId !== null) owners.set(p.rightId, "B");
+  // A suggestion cites only its own two rows. An abstention may also cite any Source B row
+  // (e.g. the competing candidates of an ambiguous row); it reserves and asserts nothing.
+  const owns = (ref: EvidenceRef) =>
+    ref.side === "A" ? ref.rowId === p.leftId : p.outcome === "abstain" ? ctx.rows.get(ref.rowId)?.side === "B" : ref.rowId === p.rightId;
   const sides = new Set<string>();
   for (const ref of p.evidence) {
-    if (owners.get(ref.rowId) !== ref.side) return "invalid_evidence";
+    if (!owns(ref)) return "invalid_evidence";
     const column = ctx.datasets[ref.side].columns.find((c) => c.id === ref.columnId);
-    if (!column || ctx.rows.get(ref.rowId)!.row.cells[column.index] !== ref.value) return "invalid_evidence";
+    if (!column || projectContext(ctx.rows.get(ref.rowId)!.row.cells[column.index]) !== ref.value) return "invalid_evidence";
     sides.add(ref.side);
   }
   // A suggestion needs supporting evidence from both sides (§6).
   if (p.outcome === "suggest" && !(sides.has("A") && sides.has("B"))) return "invalid_evidence";
+  // §7.4 fail closed: if either row's identity text was clipped, the hidden part could change the
+  // product, so the suggestion is not actionable. Manual review stays available.
+  if (p.outcome === "suggest" && (identityContextTruncated(ctx, p.leftId) || identityContextTruncated(ctx, p.rightId!)))
+    return "truncated_context";
   return null;
 }
 
@@ -354,12 +365,13 @@ export function unresolvedReason(state: ReconciliationState, rowId: RowId): Unre
   if (proposal?.outcome === "abstain" && proposal.reasonCode === "ambiguous")
     return r("ambiguous", "More than one candidate is plausible.");
   if (state.analysis.failedRowIds.includes(rowId)) return r("analysis_failed", "Analysis could not produce a verified suggestion.");
+  // A row with nothing to retrieve could not have been analyzed, whatever happened to the run.
+  if (candidates.length === 0) return r("no_candidates", "No Source B record shares name words; use manual selection.");
   const selected = state.analysis.selectedRowIds.includes(rowId);
   if (selected && !state.analysis.analyzedRowIds.includes(rowId) && state.analysis.status === "cancelled")
     return r("analysis_cancelled", "Analysis was cancelled before this record was reviewed.");
   if (selected && !state.analysis.analyzedRowIds.includes(rowId) && state.analysis.status === "failed")
     return r("analysis_failed", "Analysis stopped before this record was reviewed.");
-  if (candidates.length === 0) return r("no_candidates", "No Source B record shares name words; use manual selection.");
   if (!selected && state.analysis.status !== "idle")
     return r("analysis_limit", "Outside the per-pass AI review limit; manual review is available.");
   if (proposal?.outcome === "suggest") return r("unpaired", "Suggested pair awaiting review.");

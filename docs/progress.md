@@ -2,6 +2,51 @@
 
 Last updated: 2026-10-15
 
+## Phase 03-II (2026-10-15): AI orchestration for `/api/suggest`
+
+Done. The browser can now run a bounded, verified semantic-suggestion pass. Design notes are in
+`docs/ai-orchestration.md`. There is still no UI; Phase 03-III consumes `useSuggestAnalysis`.
+
+- **New `web/src/analysis/`:**
+  - `contract.ts`: strict Zod schemas that mirror the Pydantic models, the limits, and the typed failure taxonomy.
+  - `request.ts`: a pure request builder with a UTF-8 byte cap.
+  - `response.ts`: validation against the frozen request.
+  - `runner.ts`: a sequential runner with one request in flight, at most four requests and 20 rows, a 4-minute deadline, `AbortController` and idempotent cancel.
+  - `useSuggestAnalysis.ts`: a React adapter that starts each committed run exactly once and is safe under Strict Mode.
+- **Domain changes:**
+  - New `domain/aiContext.ts`, which clips AI context to 160 code points as specified in §7.4.
+  - `proposalDefect` now does three new things:
+    - It compares evidence with the clipped value the model saw.
+    - It allows an abstention to cite competing Source B rows. This was a gap: the API accepted such abstentions, but the engine counted the row as failed.
+    - It fails closed with a new `truncated_context` reason when a suggestion rests on clipped identity text.
+  - `unresolvedReason` now checks `no_candidates` before the run-level cancelled or failed reasons.
+- **Reducer change:** `analysis/completed` ignores unsent rows that have no candidates left, which happens when a human resolved them mid-run. Such a run now ends `complete` instead of `partial`.
+- **Contract drift tests:**
+  - Shared fixtures live in `fixtures/contracts/suggest/`.
+  - They are checked by `api/tests/test_contract_fixtures.py` and by `web/src/analysis/contract.test.ts`.
+  - The backend app code is unchanged. The only API change is the new test file.
+
+| Check (run 2026-10-15) | Result |
+| --- | --- |
+| `pnpm test` (web) | 17 files, 300 tests passed (233 existing, 62 analysis, 5 domain/reducer regressions) |
+| `npx tsc --noEmit` (web) | Clean |
+| `pnpm lint` (web) | Clean |
+| `pnpm build` (web) | Succeeded |
+| `uv run pytest -q` (api) | 41 passed (35 existing, 6 contract fixtures) |
+| `uv run ruff check .` / `ruff format --check .` | Clean |
+
+**Live provider check: failed.** One authorized request was sent: the `api/README.md` smoke
+payload, posted directly to `127.0.0.1:8000/api/suggest`. The API on that port was the
+already-running local dev server, configured with `google/gemma-4-31b-it:free`. The result:
+
+- **Response:** 502 `UPSTREAM_ERROR`: "The configured model is unavailable or has no endpoint supporting strict JSON schema output." `retryable: false`.
+- **Not verified:** whether strict structured output works with this model. Because no successful response came back, there were no proposals, abstentions, usage or model metadata, and the Pydantic `SuggestResponse` path was not exercised.
+- **Client validation:** the real error body passed `apiErrorSchema`. `readSuggestResponse` classified it as `UPSTREAM_ERROR`, run-scoped, not retryable, with no metadata.
+- **Next step:** choose a model with an OpenRouter endpoint that supports strict `json_schema` in `api/.env`, then rerun the smoke test. The server's message cannot tell a 404 apart from a "parameter" rejection (Phase 01 open item 3).
+
+Still open: Phase 03-III (export lifecycle, Blob URLs, downloads and the working UI), a model
+that passes the live check, and the evaluation harness.
+
 ## Phase 03-I (2026-10-15): workflow state and reducer
 
 Done. The browser-side workflow state machine is built in `web/src/workflow/` (design notes in

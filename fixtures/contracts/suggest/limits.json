@@ -1,0 +1,9 @@
+{
+  "maxBodyBytes": 65536,
+  "maxIdChars": 128,
+  "maxCellChars": 2048,
+  "maxSuggestRows": 5,
+  "maxCandidates": 5,
+  "maxEvidence": 6,
+  "maxExplanationChars": 240
+}
