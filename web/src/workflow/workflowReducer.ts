@@ -1,6 +1,7 @@
 // The single authoritative workflow transition function (spec §9). Pure: no I/O, clocks, IDs or
 // hashing. Reconciliation changes are delegated to the domain engine, which owns revision and
 // generation; this reducer only decides whether an event is current enough to reach it.
+import { candidatesFor } from "../domain/candidates";
 import { buildContext } from "../domain/eligibility";
 import { analysisEligibleRows } from "../domain/exportSnapshot";
 import { configurationTuple, validateConfiguration, type DraftMapping } from "../domain/mapping";
@@ -65,7 +66,13 @@ function updateAnalysis(
   return recordAnalysis(rec, rec.generation, rec.context.configurationHash, { ...a, status, analyzedRowIds, failedRowIds });
 }
 
-const unprocessed = (a: AnalysisRecord) => a.selectedRowIds.filter((id) => !a.analyzedRowIds.includes(id) && !a.failedRowIds.includes(id));
+// Selected rows still waiting for inference. A row a human paired, or whose every candidate was
+// paired or rejected during the run, no longer needs it; it is never sent and keeps its own
+// unresolved reason (e.g. no_candidates), so it does not make the run partial.
+const unprocessed = (rec: ReconciliationState) => {
+  const a = rec.analysis;
+  return a.selectedRowIds.filter((id) => !a.analyzedRowIds.includes(id) && !a.failedRowIds.includes(id) && candidatesFor(rec, id).length > 0);
+};
 
 // Every terminal transition advances the generation, so late events for the finished run fail
 // both this reducer's guard and the domain's own generation checks.
@@ -178,7 +185,7 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
     case "analysis/completed": {
       const rec = currentRun(state, action);
       if (!rec) return state;
-      const incomplete = rec.analysis.failedRowIds.length > 0 || unprocessed(rec.analysis).length > 0;
+      const incomplete = rec.analysis.failedRowIds.length > 0 || unprocessed(rec).length > 0;
       return withReconciliation(finish(rec, { status: incomplete ? "partial" : "complete" }));
     }
 

@@ -188,3 +188,20 @@ describe("races", () => {
     expect(workflowReducer(s, { type: "analysis/failed", ...ref, message: "late" }).error).toBe(error);
   });
 });
+
+describe("rows resolved by a human during the run", () => {
+  it("completes as `complete` when the only unprocessed rows lost every candidate", async () => {
+    let s = await started();
+    s = workflowReducer(s, batch(s, "r1", [suggestion(s, rowA(s, 1), rowB(s, 1))], [rowA(s, 1)]));
+    s = workflowReducer(s, decide(s, "accept", rowA(s, 3), rowB(s, 3)));
+    const done = workflowReducer(s, { type: "analysis/completed", ...runRef(s) });
+    expect(rec(done).analysis).toMatchObject({ status: "complete", analyzedRowIds: [rowA(s, 1)], failedRowIds: [] });
+    expectInvariants(done);
+  });
+
+  it("still reports `partial` when an unprocessed row could have been analyzed", async () => {
+    let s = await started();
+    s = workflowReducer(s, batch(s, "r1", [suggestion(s, rowA(s, 1), rowB(s, 1))], [rowA(s, 1)]));
+    expect(rec(workflowReducer(s, { type: "analysis/completed", ...runRef(s) })).analysis.status).toBe("partial");
+  });
+});
