@@ -32,6 +32,17 @@ const ERROR_STATUS: Record<ApiErrorCode, { statuses: readonly number[]; code: Fa
   TIMEOUT: { statuses: [504], code: "SERVER_TIMEOUT" },
 };
 
+// A non-200 §8.3 envelope as a typed failure; shared by the suggest and map clients.
+export function readApiError(status: number, json: unknown, requestId: string, rowIds: readonly string[]): AnalysisFailure {
+  const env = apiErrorSchema.safeParse(json);
+  if (!env.success) return failure("CONTRACT_MISMATCH", requestId, rowIds);
+  const e = env.data.error;
+  const known = ERROR_STATUS[e.code];
+  // The server echoes "" when it rejected the body before reading a request ID.
+  if (!known.statuses.includes(status) || (e.requestId !== "" && e.requestId !== requestId)) return failure("CONTRACT_MISMATCH", requestId, rowIds);
+  return failure(known.code, requestId, rowIds, { retryable: e.retryable, retryAfterSeconds: e.retryAfterSeconds });
+}
+
 const key = (side: string, rowId: string, columnId: string) => `${side}\u0000${rowId}\u0000${columnId}`;
 
 export function readSuggestResponse(request: SuggestRequest, http: HttpResult): ReadResult {
@@ -49,15 +60,7 @@ export function readSuggestResponse(request: SuggestRequest, http: HttpResult): 
     return fail("MALFORMED_RESPONSE");
   }
 
-  if (http.status !== 200) {
-    const env = apiErrorSchema.safeParse(json);
-    if (!env.success) return fail("CONTRACT_MISMATCH");
-    const e = env.data.error;
-    const known = ERROR_STATUS[e.code];
-    // The server echoes "" when it rejected the body before reading a request ID.
-    if (!known.statuses.includes(http.status) || (e.requestId !== "" && e.requestId !== request.requestId)) return fail("CONTRACT_MISMATCH");
-    return fail(known.code, null, { retryable: e.retryable, retryAfterSeconds: e.retryAfterSeconds });
-  }
+  if (http.status !== 200) return { ok: false, error: readApiError(http.status, json, request.requestId, rowIds), meta: null };
 
   const parsed = suggestResponseSchema.safeParse(json);
   if (!parsed.success) return fail("CONTRACT_MISMATCH");
