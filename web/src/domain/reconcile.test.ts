@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { projectContext } from "./aiContext";
 import { checkPair } from "./eligibility";
 import {
   addProposals,
@@ -6,6 +7,7 @@ import {
   nextGeneration,
   partition,
   pendingProposals,
+  proposalDefect,
   proposalStatus,
   recordAnalysis,
   unresolvedReason,
@@ -339,5 +341,47 @@ describe("unresolved reasons", () => {
       failedRowIds: [rowA(s, 2)],
     });
     expect(unresolvedReason(failed, rowA(s, 2)).reason).toBe("analysis_failed");
+  });
+});
+
+describe("AI context projection at intake (§7.4)", () => {
+  const long = (tag: string) => `cotton tote ${tag} `.repeat(16).trim(); // > 160 code points
+  const clippedEv = (s: ReconciliationState, side: "A" | "B", rowId: string) => ({ ...ev(s, side, rowId), value: projectContext(ev(s, side, rowId).value) });
+
+  it("accepts evidence equal to the clipped value the model saw, never the hidden full cell", async () => {
+    const s = await setup(`id,name,qty\n,${long("a")},1\n`, `id,name,qty\n,${long("b")},1\n,cotton bag,1\n`);
+    const [a, b] = [rowA(s, 0), rowB(s, 0)];
+    const abstention: IncomingProposal = { leftId: a, rightId: null, outcome: "abstain", reasonCode: "ambiguous", evidence: [clippedEv(s, "A", a)], explanation: "x" };
+    expect(proposalDefect(s.context, abstention)).toBeNull();
+    expect(proposalDefect(s.context, { ...abstention, evidence: [ev(s, "A", a)] })).toBe("invalid_evidence");
+    // An abstention may cite competing Source B rows it was shown.
+    expect(proposalDefect(s.context, { ...abstention, evidence: [clippedEv(s, "B", b), ev(s, "B", rowB(s, 1))] })).toBeNull();
+    expect(proposalDefect(s.context, { ...abstention, evidence: [{ ...ev(s, "B", rowB(s, 1)), value: "invented" }] })).toBe("invalid_evidence");
+    // A suggestion still cites only its own two rows.
+    const short = await setup("id,name,qty\n,cotton bag,1\n", "id,name,qty\n,cotton bag,1\n,cotton bag large,1\n");
+    const p = suggest(rowA(short, 0), rowB(short, 0), short);
+    expect(proposalDefect(short.context, p)).toBeNull();
+    expect(proposalDefect(short.context, { ...p, evidence: [...p.evidence, ev(short, "B", rowB(short, 1))] })).toBe("invalid_evidence");
+  });
+
+  it("fails closed on a suggestion whose identity text was clipped on either side", async () => {
+    const s = await setup(`id,name,qty\n,${long("a")},1\n,cotton bag,1\n`, `id,name,qty\n,${long("b")},1\n,cotton bag,1\n`);
+    const p = (l: string, r: string): IncomingProposal => ({ ...suggest(l, r, s), evidence: [clippedEv(s, "A", l), clippedEv(s, "B", r)] });
+    expect(proposalDefect(s.context, p(rowA(s, 0), rowB(s, 1)))).toBe("truncated_context");
+    expect(proposalDefect(s.context, p(rowA(s, 1), rowB(s, 0)))).toBe("truncated_context");
+    expect(proposalDefect(s.context, p(rowA(s, 1), rowB(s, 1)))).toBeNull();
+    expect(addProposals(s, batch(s, [p(rowA(s, 0), rowB(s, 1))])).dropped).toEqual([{ leftId: rowA(s, 0), reason: "truncated_context" }]);
+  });
+
+  it("reports no_candidates, not analysis_cancelled, for a selected row that has nothing to retrieve", async () => {
+    const s = await setup("id,name,qty\n,blue mug,1\n,blue mug large,1\n", "id,name,qty\n,blue mug,1\n");
+    const taken = ok(applyDecision(s, decision(s, "accept", rowA(s, 0), rowB(s, 0))));
+    const ran = recordAnalysis(taken, taken.generation, taken.context.configurationHash, {
+      status: "cancelled",
+      selectedRowIds: [rowA(s, 0), rowA(s, 1)],
+      analyzedRowIds: [],
+      failedRowIds: [],
+    });
+    expect(unresolvedReason(ran, rowA(s, 1)).reason).toBe("no_candidates");
   });
 });
