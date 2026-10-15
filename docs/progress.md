@@ -2,6 +2,45 @@
 
 Last updated: 2026-10-15
 
+## Phase 03-I (2026-10-15): workflow state and reducer
+
+Done. The browser-side workflow state machine is built in `web/src/workflow/` (design notes in
+`docs/workflow-state.md`). It wraps the domain engine without duplicating its policy. The UI does
+not use it yet, and nothing calls the API.
+
+- **State:** one `WorkflowState` holding the stage, both sources (each with a pending import
+  token), the draft mapping, `reconciliation` (null until mappings are confirmed) and a display
+  error. Counts, statuses and progress are derived by selectors.
+- **Reducer:** pure, with an exhaustive action union and no generic setters.
+  - Imports are token-guarded, so a slower earlier file cannot overwrite a newer one.
+  - Replacing or clearing a source drops the confirmation, decisions, proposals and any run,
+    and keeps the other source.
+  - Confirmation re-validates the current draft and datasets against what was hashed.
+  - Every decision goes through `applyDecision`.
+  - Analysis start, batch, batch failure, completion, cancellation and failure are guarded by
+    status, generation and configuration hash. Terminal transitions advance the generation.
+- **Hook:** `useAccordWorkflow` owns one `useReducer`. It creates tokens, decision IDs and
+  timestamps, and it runs parsing and hashing outside the reducer.
+- **Domain changes:**
+  - New `proposalIdOf` helper.
+  - Bug fix: `addProposals` no longer drops and re-adds a proposal when the same batch is
+    replayed. Before, the replay bumped revision with no change. There is a regression test.
+- **Web change:** added the dev dependency `jsdom` 30.1.3, for the hook test only.
+- **Deviation:** spec §5.3 puts the reducer under `src/app/`. It lives in `web/src/workflow/`
+  instead, next to `web/src/domain/`, because `web/app/` is the Next.js route directory.
+
+| Check (run 2026-10-15) | Result |
+| --- | --- |
+| `pnpm test` (web) | 12 files, 233 tests passed (174 existing, 1 domain regression, 58 workflow) |
+| `npx tsc --noEmit` (web) | Clean |
+| `pnpm lint` (web) | Clean |
+| `pnpm build` (web) | Succeeded |
+| Backend | Unchanged; not re-run |
+
+Still open: 03-II (AI orchestration: the `/api/suggest` request builder, Zod response schema,
+context clipping, batching, retries and `AbortController`) and 03-III (export lifecycle, Blob URLs,
+downloads and the working UI).
+
 ## Phase 02 (2026-10-15): deterministic reconciliation engine
 
 The browser-side domain engine is now built in `web/src/domain/` (design notes in
