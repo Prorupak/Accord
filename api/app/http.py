@@ -9,6 +9,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 
+from . import limits
 from .config import get_settings
 from .schemas import MAX_BODY_BYTES
 
@@ -64,8 +65,17 @@ def _guard_origin(request: Request) -> None:
         raise ApiError("INVALID_INPUT", 403, "Origin not allowed.")
 
 
-async def read_json[M: BaseModel](request: Request, model: type[M]) -> M:
+async def read_json[M: BaseModel](request: Request, model: type[M], route: str) -> M:
     _guard_origin(request)
+    # Before the body is read or validated, so a flood costs no parsing or provider calls.
+    if (wait := limits.route_window(route).acquire()) is not None:
+        raise ApiError(
+            "RATE_LIMITED",
+            429,
+            "Too many analysis requests. Try again shortly.",
+            retryable=True,
+            retry_after=wait,
+        )
     if request.headers.get("content-type", "").split(";")[0].strip() != "application/json":
         raise ApiError("INVALID_INPUT", 415, "Content-Type must be application/json.")
     too_large = ApiError("PAYLOAD_TOO_LARGE", 413, f"Request body exceeds {MAX_BODY_BYTES} bytes.")
