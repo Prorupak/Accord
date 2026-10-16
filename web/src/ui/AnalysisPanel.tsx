@@ -26,9 +26,9 @@ export function AnalysisPanel({ ai }: { ai: Analysis }) {
 
   return (
     <section aria-labelledby="ai-title" className="flex flex-col gap-2 rounded border p-3">
-      <h3 id="ai-title" className="font-semibold">
+      <h2 id="ai-title" className="font-semibold">
         AI suggestions
-      </h3>
+      </h2>
       <p className="text-sm">
         Sends the mapped fields of up to 20 unmatched Source A records, and their candidate Source B records, to the configured AI
         provider. Suggestions are never applied without your approval.

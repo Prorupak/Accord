@@ -30,9 +30,9 @@ export function RecordDetail({ row, workflow }: { row: ReviewRow; workflow: Work
 
   return (
     <section aria-labelledby="detail-title" className="flex flex-col gap-3 rounded border p-3">
-      <h3 id="detail-title" className="font-semibold">
+      <h2 id="detail-title" className="font-semibold">
         {statusLabel(row)}
-      </h3>
+      </h2>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {leftId && <SourceRecord rec={rec} rowId={leftId} />}
@@ -99,9 +99,9 @@ function SourceRecord({ rec, rowId }: { rec: ReconciliationState; rowId: RowId }
     id === m.productId ? " (product ID)" : id === m.name ? " (name)" : id === m.quantity ? " (quantity)" : id === m.unit ? " (unit)" : "";
   return (
     <div>
-      <h4 className="font-semibold">
+      <h3 className="font-semibold">
         Source {f.side}, record {f.row.index + 1}
-      </h4>
+      </h3>
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 text-sm">
         {f.dataset.columns.map((c) => (
           <div key={c.id} className="contents">
@@ -121,7 +121,7 @@ function ProposalEvidence({ rec, proposal }: { rec: ReconciliationState; proposa
   const header = (side: "A" | "B", columnId: string) => rec.context.datasets[side].columns.find((c) => c.id === columnId)?.header ?? columnId;
   return (
     <div className="flex flex-col gap-1">
-      <h4 className="font-semibold">AI output</h4>
+      <h3 className="font-semibold">AI output</h3>
       <p className="text-sm">
         Outcome: {proposal.outcome === "suggest" ? "suggested a pair" : `abstained (${proposal.reasonCode.replace(/_/g, " ")})`}
       </p>
@@ -173,7 +173,7 @@ function CandidatePicker({ rec, leftId, onPick }: { rec: ReconciliationState; le
   const inputId = `picker-${leftId}`;
   return (
     <div className="flex flex-col gap-2 border-t pt-2">
-      <h4 className="font-semibold">Choose another record</h4>
+      <h3 className="font-semibold">Choose another record</h3>
       {eligible.length === 0 ? (
         <p className="text-sm">
           No Source B record can be paired with this record. Records that are already paired, rejected for it, quarantined for a

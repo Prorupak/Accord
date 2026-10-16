@@ -81,10 +81,7 @@ export function MappingScreen({ workflow }: { workflow: Workflow }) {
   };
 
   return (
-    <section aria-labelledby="mapping-title" className="flex flex-col gap-4">
-      <h2 id="mapping-title" className="text-lg font-semibold">
-        Map columns
-      </h2>
+    <section className="flex flex-col gap-4">
       {view.mappingErrors && view.mappingErrors.length > 0 && <p>Select the product-name and quantity columns to continue.</p>}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -124,7 +121,7 @@ export function MappingScreen({ workflow }: { workflow: Workflow }) {
       </fieldset>
 
       <div className="flex flex-col gap-2 rounded border p-3">
-        <h3 className="font-semibold">AI mapping draft (optional)</h3>
+        <h2 className="font-semibold">AI mapping draft (optional)</h2>
         <p className="text-sm">Sends the column headers and the first five records of each file to the configured AI provider.</p>
         <div className="flex flex-wrap gap-2">
           <button type="button" className="btn" disabled={mapState.status === "loading"} onClick={() => void suggest()}>

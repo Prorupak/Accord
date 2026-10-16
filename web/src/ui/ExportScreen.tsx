@@ -20,10 +20,7 @@ export function ExportScreen({ workflow, ai }: { workflow: Workflow; ai: Analysi
   };
 
   return (
-    <section aria-labelledby="export-title" className="flex flex-col gap-4">
-      <h2 id="export-title" className="text-lg font-semibold">
-        Export
-      </h2>
+    <section className="flex flex-col gap-4">
       <p>
         {c.matched} matched {c.matched === 1 ? "pair" : "pairs"}. {c.unresolvedA} unresolved {c.unresolvedA === 1 ? "record" : "records"} in A,{" "}
         {c.unresolvedB} in B. {c.quantityDifferences} matched {c.quantityDifferences === 1 ? "pair has" : "pairs have"} a quantity difference.

@@ -20,11 +20,7 @@ export function ReviewScreen({ workflow, ai }: { workflow: Workflow; ai: Analysi
   const selectedRow = rows.find((r) => r.key === selected) ?? null;
 
   return (
-    <section aria-labelledby="review-title" className="flex flex-col gap-4">
-      <h2 id="review-title" className="text-lg font-semibold">
-        Review: {rec.context.datasets.A.fileName} and {rec.context.datasets.B.fileName}
-      </h2>
-
+    <section className="flex flex-col gap-4">
       <dl className="grid grid-cols-2 gap-2 sm:grid-cols-5" aria-label="Summary">
         <Count label="Matched pairs" value={counts.matched} />
         <Count label="Needs review" value={counts.needsReview} />

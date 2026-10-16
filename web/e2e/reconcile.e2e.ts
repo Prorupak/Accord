@@ -78,10 +78,10 @@ test("canonical reconciliation with a deterministic AI test double, exported and
   }
 
   // Any edit invalidates the prepared files.
-  await page.getByRole("button", { name: "3. Review" }).click();
+  await page.getByRole("button", { name: "03 Review" }).click();
   await row(page, "Organic cotton tote natural").getByRole("button", { name: /^Details/ }).click();
   await page.getByRole("button", { name: "Undo match" }).click();
-  await page.getByRole("button", { name: "4. Export" }).click();
+  await page.getByRole("button", { name: "04 Export" }).click();
   await expect(page.getByRole("link", { name: /^Download/ })).toHaveCount(0);
   await expect(page.getByText("2 matched pairs. 2 unresolved records in A, 3 in B.")).toBeVisible();
 });

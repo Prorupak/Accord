@@ -76,13 +76,13 @@ async function runCanonicalAi() {
 describe("import", () => {
   it("loads the sample through the normal import path and shows file facts", async () => {
     expect(pageText()).toContain("Choose two CSV exports, or explore the sample.");
-    expect(button("2. Mapping").disabled).toBe(true);
+    expect(button("02 Mapping").disabled).toBe(true);
     await click(button("Try sample data"));
     expect(pageText()).toContain("source-a.csv");
     expect(pageText()).toContain(`${new TextEncoder().encode(SOURCE_B).length} bytes`);
     expect(pageText()).toMatch(/Records4Columns3/);
     expect(pageText()).toMatch(/Records5Columns3/);
-    expect(button("2. Mapping").disabled).toBe(false);
+    expect(button("02 Mapping").disabled).toBe(false);
   });
 
   it("imports two user files, including the same file on both sides", async () => {
@@ -93,7 +93,7 @@ describe("import", () => {
     await click(button("Continue to mapping"));
     mapCanonical();
     await click(button("Confirm mappings"));
-    expect(stage()).toBe("3. Review");
+    expect(stage()).toBe("03 Review");
     expect(count("Matched pairs")).toBe(2);
   });
 
@@ -117,19 +117,19 @@ describe("import", () => {
   it("asks before replacing a source once work exists, and cancelling keeps the work", async () => {
     await toReview();
     await runCanonicalAi();
-    await click(button("1. Import"));
+    await click(button("Import, complete"));
     confirmSpy.mockReturnValue(false);
     chooseFiles("A", csvFile("other.csv", SOURCE_A));
     await settle();
     expect(confirmSpy).toHaveBeenCalledTimes(1);
     expect(pageText()).toContain("source-a.csv");
-    expect(button("3. Review").disabled).toBe(false);
+    expect(button("03 Review").disabled).toBe(false);
 
     confirmSpy.mockReturnValue(true);
     chooseFiles("A", csvFile("other.csv", SOURCE_A));
     await settle();
     expect(pageText()).toContain("other.csv");
-    expect(button("3. Review").disabled).toBe(true);
+    expect(button("03 Review").disabled).toBe(true);
   });
 });
 
@@ -203,7 +203,7 @@ describe("mapping", () => {
     expect((document.getElementById("map-A-name") as HTMLSelectElement).value).toBe("");
     await click(button("Apply suggested draft"));
     expect((document.getElementById("map-A-name") as HTMLSelectElement).value).toBe("c1");
-    expect(stage()).toBe("2. Mapping");
+    expect(stage()).toBe("02 Mapping");
   });
 
   it("rejects a confirmation whose draft changed while hashing", async () => {
@@ -212,7 +212,7 @@ describe("mapping", () => {
     select("map-B-productId", "");
     await settle();
     expect(document.querySelector('[role="alert"]')?.textContent).toContain("changed while confirming");
-    expect(stage()).toBe("2. Mapping");
+    expect(stage()).toBe("02 Mapping");
   });
 });
 
@@ -220,7 +220,7 @@ describe("review and decisions", () => {
   beforeEach(toReview);
 
   it("shows exact-ID matches and the P03 quantity delta", () => {
-    expect(stage()).toBe("3. Review");
+    expect(stage()).toBe("03 Review");
     expect(count("Matched pairs")).toBe(2);
     expect(count("Quantity differences")).toBe(1);
     expect(count("Unresolved in A")).toBe(2);
@@ -474,3 +474,119 @@ describe("export", () => {
   });
 });
 
+
+describe("shell", () => {
+  const stageButtons = () => [...document.querySelectorAll<HTMLButtonElement>('nav[aria-label="Workflow"] button')];
+  const h1s = () => [...document.querySelectorAll("h1")].map((h) => h.textContent);
+
+  it("gates future stages and ignores clicks on unavailable ones", async () => {
+    expect(stageButtons().map((b) => [b.textContent, b.disabled])).toEqual([
+      ["01 Import", false],
+      ["02 Mapping", true],
+      ["03 Review", true],
+      ["04 Export", true],
+    ]);
+    await click(button("03 Review"));
+    expect(stage()).toBe("01 Import");
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it("marks exactly one current step and only the stages state proves complete", async () => {
+    await click(button("Try sample data"));
+    expect(document.querySelectorAll('[aria-current="step"]')).toHaveLength(1);
+    expect(stageButtons()[0].textContent).toBe("01 Import"); // current, so not labelled complete
+    await click(button("Continue to mapping"));
+    expect(stageButtons().map((b) => b.textContent?.trim())).toEqual(["Import, complete", "02 Mapping", "03 Review", "04 Export"]);
+    mapCanonical();
+    await click(button("Confirm mappings"));
+    expect(stageButtons().map((b) => b.textContent?.trim())).toEqual(["Import, complete", "Mapping, complete", "03 Review", "04 Export"]);
+  });
+
+  it("reaches every available stage by keyboard, skipping unavailable ones", async () => {
+    await click(button("Try sample data"));
+    const focusable = stageButtons().filter((b) => !b.disabled && b.tabIndex >= 0);
+    expect(focusable.map((b) => b.textContent)).toEqual(["01 Import", "02 Mapping"]);
+    focusable[1].focus();
+    expect(document.activeElement).toBe(focusable[1]);
+  });
+
+  it("has one h1 on every stage, owned by the shell intro", async () => {
+    expect(h1s()).toEqual(["Bring two exports into agreement."]);
+    await toReview();
+    expect(h1s()).toEqual(["Review the proposed matches."]);
+    await click(button("Mapping, complete"));
+    expect(h1s()).toEqual(["Understand your columns."]);
+    await click(button("04 Export"));
+    expect(h1s()).toEqual(["Export a traceable result."]);
+  });
+
+  it("introduces the current stage with an eyebrow and a lead", async () => {
+    expect(pageText()).toContain("01 / Import");
+    await toReview();
+    expect(pageText()).toContain("03 / Review");
+    expect(pageText()).toContain("Comparing source-a.csv with source-b.csv.");
+    expect(document.querySelector("main")?.getAttribute("aria-labelledby")).toBe("stage-title");
+  });
+
+  it("shows a titled alert once and dismisses it from the keyboard-reachable button", async () => {
+    await click(button("Try sample data"));
+    await click(button("Continue to mapping"));
+    mapCanonical();
+    act(() => button("Confirm mappings").click());
+    select("map-B-productId", "");
+    await settle();
+    const alerts = document.querySelectorAll('[role="alert"]');
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].textContent).toContain("Mappings changed");
+    await click(button("Dismiss", alerts[0]));
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it("starts over without asking when there is nothing to lose", async () => {
+    await click(button("Start over"));
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(stage()).toBe("01 Import");
+  });
+
+  it("keeps everything when Start over is cancelled, and resets when confirmed", async () => {
+    await toReview();
+    confirmSpy.mockReturnValue(false);
+    await click(button("Start over"));
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    expect(stage()).toBe("03 Review");
+    expect(count("Matched pairs")).toBe(2);
+
+    confirmSpy.mockReturnValue(true);
+    await click(button("Start over"));
+    expect(stage()).toBe("01 Import");
+    expect(pageText()).not.toContain("source-a.csv");
+    expect(button("02 Mapping").disabled).toBe(true);
+  });
+
+  it("keeps decisions when navigating backward and forward", async () => {
+    await toReview();
+    await runCanonicalAi();
+    await details("Organic cotton tote natural");
+    await click(button("Accept pair"));
+    expect(count("Matched pairs")).toBe(3);
+    await click(button("Import, complete"));
+    await click(button("Mapping, complete"));
+    await click(button("03 Review"));
+    expect(count("Matched pairs")).toBe(3);
+    expect(confirmSpy).not.toHaveBeenCalled();
+  });
+
+  it("drops a pending AI run on Start over; its late response changes nothing", async () => {
+    await toReview();
+    let release = () => {};
+    stubFetch({ "/api/suggest": (body) => new Promise((r) => (release = () => r({ status: 200, body: canonicalSuggestResponse(body) }))) });
+    await click(button("Run AI suggestions"));
+    await click(button("Start over"));
+    expect(stage()).toBe("01 Import");
+    release();
+    await settle();
+    expect(stage()).toBe("01 Import");
+    expect(button("03 Review").disabled).toBe(true);
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+  });
+});

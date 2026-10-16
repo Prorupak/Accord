@@ -15,14 +15,8 @@ export function ImportScreen({ workflow, samples }: { workflow: Workflow; sample
   };
 
   return (
-    <section aria-labelledby="import-title" className="flex flex-col gap-4">
-      <div>
-        <h2 id="import-title" className="text-lg font-semibold">
-          Bring two exports into agreement.
-        </h2>
-        <p>Compare product records, review uncertain matches, and export a traceable result.</p>
-        {!state.sources.A.dataset && !state.sources.B.dataset && <p>Choose two CSV exports, or explore the sample.</p>}
-      </div>
+    <section className="flex flex-col gap-4">
+      {!state.sources.A.dataset && !state.sources.B.dataset && <p>Choose two CSV exports, or explore the sample.</p>}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <SourceCard side="A" workflow={workflow} />
@@ -76,7 +70,7 @@ function SourceCard({ side, workflow }: { side: Side; workflow: Workflow }) {
         choose(e.dataTransfer.files[0]);
       }}
     >
-      <h3 className="font-semibold">Source {side}</h3>
+      <h2 className="font-semibold">Source {side}</h2>
       <label htmlFor={inputId}>Choose Source {side} (CSV, or drop a file here)</label>
       <input
         id={inputId}
