@@ -64,7 +64,7 @@ Request flow: `app/http.py` guards → route in `app/routes/` (`mapping.py` → 
   no fallback model.
 - Responses echo `requestId`, `generation` and (for suggest) `configurationHash`.
 - Invariants: the API key never reaches responses, logs or errors. Logs never contain cell
-  contents. Provider messages and stack traces are never forwarded. A missing key does not stop
+  contents (unless the dev-only `LOG_MODEL_OUTPUT` flag is set). Provider messages and stack traces are never forwarded. A missing key does not stop
   startup; inference then returns 503 `NOT_CONFIGURED`.
 
 ## Frontend notes
