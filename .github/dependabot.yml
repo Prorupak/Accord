@@ -11,6 +11,10 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
+    ignore:
+      # typescript-eslint supports TS <6.1 only; lift once it supports TS 7.
+      - dependency-name: typescript
+        versions: [">=6.1.0"]
     groups:
       web-minor-patch:
         update-types: [minor, patch]
