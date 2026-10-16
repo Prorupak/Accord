@@ -24,7 +24,7 @@ async function sampleToReview(page: Page) {
     await page.locator(`#map-${side}-name`).selectOption("c1");
     await page.locator(`#map-${side}-quantity`).selectOption("c2");
   }
-  await page.getByLabel("Both quantity columns use the same unit").check();
+  await page.getByLabel("Both files use the same quantity unit").check();
   await page.getByRole("button", { name: "Confirm mappings" }).click();
   await expect(count(page, "Matched pairs")).toHaveText("2");
 }

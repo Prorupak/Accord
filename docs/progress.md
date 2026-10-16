@@ -2,6 +2,35 @@
 
 Last updated: 2026-10-16
 
+## Phase 04-I / Step 04 (2026-10-16): Mapping screen
+
+Done. Mapping matches `docs/accord-mapping-prototype.html` (see "Mapping" in `docs/ui-design-system.md`).
+It has a source strip with `Ready` marks, a section head with the AI trigger and a draft strip
+(Dismiss / Apply draft), two source panels with `CORE FIELDS` / `OPTIONAL FIELDS`, header-only
+selects and `PREVIEW FROM` value previews, comparison rules with custom checkboxes and a safeguards
+line, and an anchored confirmation bar. The reducer, domain, hashing, `/api/map` contract,
+confirmation and discard prompts are unchanged.
+
+- `MappingScreen.tsx` is rewritten. `AccordApp.tsx` uses the prototype's longer Mapping lead.
+- Copy now follows the prototype: `Match IDs case-insensitively`, `Both files use the same quantity
+  unit`, `Apply draft`, the footer status lines, and options that show the header only (values moved
+  to the preview). The tests and both e2e specs are updated to match.
+- New tests: the source strip and heading outline, previews, readiness gating, rule semantics, AI
+  flags (`AI draft available`, Dismiss, `Suggested`, `Edited`), and a Playwright layout check at
+  1024 and 390.
+
+Results: `pnpm test` 366/366, `tsc`, lint and build clean, Playwright 7/7. Production screenshots
+were compared with the prototype at 1440 (including a stubbed AI draft), 1024 and 390. There is no
+horizontal overflow.
+
+Open:
+- The "what is sent to the AI provider" caption under the AI button is commented out in the source.
+  The button's `aria-describedby="ai-disclosure"` now points at nothing. Mapping therefore no longer
+  states what is sent, which §11.7 and the Step 03 note relied on. Restore it or decide otherwise.
+- Not ported from the prototype: the header concept tag, the "Two validated source files" aside and
+  the footer line (shell chrome or demo-only).
+- Not checked: the AI success path against a live `/api/map` (it costs quota) and a screen reader pass.
+
 ## Phase 04-I / Step 03 (2026-10-16): Import screen
 
 Done. Import now matches the editorial reference: one card holds the eyebrow `01 / Start a comparison`,

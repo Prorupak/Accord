@@ -31,7 +31,7 @@ const STAGES: ReadonlyArray<{
     title: "Bring two exports into agreement.",
     lead: () => "Compare product records, review uncertain matches, and export a traceable result.",
   },
-  { id: "mapping", label: "Mapping", title: "Understand your columns.", lead: () => "Connect the fields that describe each product." },
+  { id: "mapping", label: "Mapping", title: "Understand your columns.", lead: () => "Connect the fields that describe each product. A little context now makes every comparison clearer later." },
   {
     id: "review",
     label: "Review",

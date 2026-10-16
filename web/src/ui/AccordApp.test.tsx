@@ -55,7 +55,7 @@ function mapCanonical(sharedUnit = true) {
     select(`map-${side}-name`, "c1");
     select(`map-${side}-quantity`, "c2");
   }
-  if (sharedUnit) checkbox("Both quantity columns use the same unit").click();
+  if (sharedUnit) checkbox("Both files use the same quantity unit").click();
 }
 
 async function toReview() {
@@ -140,7 +140,7 @@ describe("mapping", () => {
   });
 
   it("requires name and quantity, and disables a column already used on that side", () => {
-    expect(pageText()).toContain("Select the product-name and quantity columns to continue.");
+    expect(pageText()).toContain("Map the missing product name or quantity field to continue.");
     expect(pageText().match(/Required\./g)).toHaveLength(4);
     expect(button("Confirm mappings").disabled).toBe(true);
     select("map-A-name", "c1");
@@ -149,9 +149,9 @@ describe("mapping", () => {
     expect(document.querySelector<HTMLOptionElement>('#map-B-quantity option[value="c1"]')!.disabled).toBe(false);
   });
 
-  it("lists columns by index and header with real example values", () => {
+  it("lists columns by header, leaving the values to the preview", () => {
     const options = [...document.querySelectorAll("#map-A-name option")].map((o) => o.textContent);
-    expect(options).toContain("#2 item: Stainless steel flask 750ml, Organic cotton tote natural, Ceramic mug white");
+    expect(options).toEqual(["Not mapped", "sku", "item", "qty"]);
   });
 
   it("confirms without a product ID mapping, which only disables exact matching", async () => {
@@ -167,10 +167,10 @@ describe("mapping", () => {
   it("gates quantity differences on the shared-unit confirmation, hidden once a unit is mapped", async () => {
     mapCanonical(false);
     select("map-A-unit", "c0");
-    expect(pageText()).not.toContain("Both quantity columns use the same unit");
+    expect(pageText()).not.toContain("Both files use the same quantity unit");
     expect(pageText()).toContain("Only one source maps a unit column");
     select("map-A-unit", "");
-    expect(pageText()).toContain("Both quantity columns use the same unit");
+    expect(pageText()).toContain("Both files use the same quantity unit");
     select("map-A-productId", "c0");
     await click(button("Confirm mappings"));
     expect(count("Quantity differences")).toBe(0);
@@ -184,7 +184,7 @@ describe("mapping", () => {
     expect(pageText()).toContain("AI mapping suggestions are unavailable: AI suggestions are not configured on the API server.");
     expect(pageText()).not.toContain("provider detail");
     expect((document.getElementById("map-A-name") as HTMLSelectElement).value).toBe("c1");
-    expect(queryButton("Apply suggested draft")).toBeNull();
+    expect(queryButton("Apply draft")).toBeNull();
     mapCanonical();
     expect(button("Confirm mappings").disabled).toBe(false);
   });
@@ -201,7 +201,7 @@ describe("mapping", () => {
     expect(JSON.parse(calls[0].body).datasets[1].samples).toHaveLength(5);
     expect(pageText()).toContain("Values resemble product names.");
     expect((document.getElementById("map-A-name") as HTMLSelectElement).value).toBe("");
-    await click(button("Apply suggested draft"));
+    await click(button("Apply draft"));
     expect((document.getElementById("map-A-name") as HTMLSelectElement).value).toBe("c1");
     expect(stage()).toBe("02 Mapping");
   });
@@ -212,6 +212,73 @@ describe("mapping", () => {
     select("map-B-productId", "");
     await settle();
     expect(document.querySelector('[role="alert"]')?.textContent).toContain("changed while confirming");
+    expect(stage()).toBe("02 Mapping");
+  });
+
+  it("summarises both sources without repeating the page heading", () => {
+    const strip = document.querySelector('[aria-label="Imported files"]')!.textContent!;
+    expect(strip).toContain("source-a.csv");
+    expect(strip).toContain("source-b.csv");
+    expect(strip).toMatch(/\d+ records · 3 columns/);
+    expect(document.querySelectorAll("h1")).toHaveLength(1);
+    expect(document.querySelectorAll("main h1")).toHaveLength(0);
+    const headings = [...document.querySelectorAll("main h2, main h3")].map((h) => h.textContent);
+    expect(headings).toEqual(["Define the fields.", "ASource A", "BSource B", "Comparison rules."]);
+  });
+
+  it("previews real values from the selected column and links them to the select", () => {
+    const preview = () => document.getElementById("map-A-name-preview")!.textContent;
+    expect(preview()).toBe("Choose a column to preview its values.");
+    select("map-A-name", "c1");
+    expect(preview()).toBe("Preview from itemStainless steel flask 750ml · Organic cotton tote natural · Ceramic mug white");
+    expect(document.getElementById("map-A-name")!.getAttribute("aria-describedby")).toContain("map-A-name-preview");
+    select("map-A-name", "c2");
+    expect(preview()).toContain("Preview from qty");
+  });
+
+  it("reports readiness from the workflow and gates the confirm button on it", () => {
+    const status = () => document.querySelector('[aria-label="Mapping confirmation"] [role="status"]')!.textContent;
+    expect(status()).toContain("0 of 4 required mappings complete");
+    select("map-A-name", "c1");
+    expect(status()).toContain("1 of 4 required mappings complete");
+    mapCanonical();
+    expect(status()).toContain("All core fields mapped");
+    expect(button("Confirm mappings").disabled).toBe(false);
+    select("map-B-name", "");
+    expect(button("Confirm mappings").disabled).toBe(true);
+  });
+
+  it("describes the case-insensitive rule and lists the ID policies", () => {
+    const input = checkbox("Match IDs case-insensitively");
+    expect(document.getElementById(input.getAttribute("aria-describedby")!)!.textContent).toContain("abc-01");
+    expect(pageText()).toContain("conflicting non-empty product IDs cannot pair");
+    expect(pageText()).toContain("duplicate product IDs are quarantined");
+  });
+
+  it("marks applied AI fields as Suggested and a later manual change as Edited", async () => {
+    stubFetch({
+      "/api/map": (body) => {
+        const req = JSON.parse(body);
+        const side = { mapping: { productId: "c0", name: "c1", quantity: "c2", unit: null }, explanations: { productId: "Codes.", name: "Names.", quantity: "Counts.", unit: "None." } };
+        return { status: 200, body: JSON.stringify({ requestId: req.requestId, generation: req.generation, A: side, B: side, warnings: [], meta: { provider: "test-double", model: "m", promptVersion: 1, durationMs: 1, attempts: 1, usage: null } }) };
+      },
+    });
+    const flag = (id: string) => document.querySelector(`label[for="${id}"]`)!.nextElementSibling!.textContent;
+    await click(button("Suggest mappings with AI"));
+    expect(flag("map-A-name")).toBe("AI draft available");
+    await click(button("Dismiss"));
+    expect(flag("map-A-name")).toBe("Required");
+    expect(queryButton("Apply draft")).toBeNull();
+    await click(button("Suggest mappings with AI"));
+    expect(document.getElementById("map-A-name-ai")!.textContent).toBe("AI suggests item. Names.");
+    await click(button("Apply draft"));
+    expect(flag("map-A-name")).toBe("Suggested");
+    expect(flag("map-A-unit")).toBe("Optional");
+    expect(pageText()).toContain("AI draft applied. You can still edit every mapping.");
+    select("map-A-name", "c0");
+    expect(flag("map-A-name")).toBe("Edited");
+    expect(document.getElementById("map-A-name-ai")!.textContent).toBe("AI suggested item.");
+    expect(flag("map-B-name")).toBe("Suggested");
     expect(stage()).toBe("02 Mapping");
   });
 });
