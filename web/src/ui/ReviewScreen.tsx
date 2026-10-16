@@ -97,7 +97,7 @@ function Count({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded border p-2">
       <dt className="text-sm">{label}</dt>
-      <dd className="text-lg font-semibold">{value}</dd>
+      <dd className="text-lg font-semibold tabular-nums">{value}</dd>
     </div>
   );
 }
@@ -122,7 +122,7 @@ function Row({ row, rec, selected, onSelect }: { row: ReviewRow; rec: NonNullabl
   }
   const differs = row.kind !== "unresolved" && row.comparison.status === "different";
   return (
-    <tr className={selected ? "bg-blue-50 dark:bg-blue-950" : undefined}>
+    <tr className={selected ? "bg-accent-soft" : undefined}>
       <td>
         {statusLabel(row)}
         {differs && <span className="block">Quantity differs</span>}

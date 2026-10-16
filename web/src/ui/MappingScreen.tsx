@@ -211,7 +211,7 @@ function SidePanel({
               ))}
             </select>
             {errors.length > 0 && (
-              <p id={`${id}-error`} className="text-sm text-red-700">
+              <p id={`${id}-error`} className="text-sm text-error">
                 {errors.map((e) => ERROR_TEXT[e.code]).join(" ")}
               </p>
             )}

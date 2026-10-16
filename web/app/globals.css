@@ -1,60 +1,240 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * Accord design tokens: the single source of visual values (docs/ui-design-system.md, spec §11.2).
+ * Components consume them as Tailwind utilities (bg-canvas, text-muted, rounded-panel, px-gutter)
+ * or as var(--…) in this file. Never add hex values or Tailwind palette colors in components.
+ * `static` emits every token, so the var() references below always resolve.
+ */
+@theme static {
+  /* Tailwind's default palette is removed: only semantic colors exist. */
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --color-canvas: #fafafa;
+  --color-surface: #ffffff;
+  --color-ink: #17191d;
+  --color-muted: #5f646d;
+  --color-line: #dfe2e7; /* decorative hairlines only; 1.3:1 on surface */
+  --color-line-strong: #868b94; /* control boundaries; 3.4:1 on surface, 3.3:1 on canvas */
+  --color-accent: #244bea;
+  --color-accent-soft: #eef2ff;
+  --color-success: #166534;
+  --color-success-soft: #f0fdf4;
+  --color-review: #92400e;
+  --color-review-soft: #fffbeb;
+  --color-error: #b91c1c;
+  --color-error-soft: #fef2f2;
+
+  --font-sans: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Type roles. Tailwind's text-sm/lg/xl remain for unredesigned screens. */
+  --text-display: 2.75rem;
+  --text-display--line-height: 1.12;
+  --text-display--letter-spacing: -0.02em;
+  --text-display--font-weight: 600;
+  --text-page: 2rem;
+  --text-page--line-height: 1.2;
+  --text-page--letter-spacing: -0.01em;
+  --text-page--font-weight: 600;
+  --text-section: 1.375rem;
+  --text-section--line-height: 1.3;
+  --text-section--font-weight: 600;
+  --text-heading: 1.125rem;
+  --text-heading--line-height: 1.35;
+  --text-heading--font-weight: 600;
+  --text-body: 1rem;
+  --text-body--line-height: 1.55;
+  --text-dense: 0.875rem;
+  --text-dense--line-height: 1.5;
+  --text-table: 0.875rem;
+  --text-table--line-height: 1.45;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.4;
+  --text-label--font-weight: 500;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.4;
+
+  /* Spacing keeps Tailwind's 4px --spacing unit; these are named layout roles. */
+  --spacing-header: 4rem;
+  --spacing-control: 2.75rem;
+  --spacing-control-dense: 2.25rem;
+  --spacing-panel: 1.5rem;
+  --spacing-gutter: 1rem;
+  --container-content: 73.75rem;
+
+  --radius-control: 8px;
+  --radius-panel: 12px;
+
+  /* Elevation is for floating content (popovers, dialogs) only. */
+  --shadow-overlay: 0 1px 2px rgb(23 25 29 / 0.06), 0 8px 24px rgb(23 25 29 / 0.08);
+
+  --duration-hover: 140ms;
+  --duration-panel: 200ms;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: light;
+  }
+
+  @media (width < 48rem) {
+    :root {
+      --text-display: 2.125rem;
+      --text-page: 1.75rem;
+    }
+  }
+
+  @media (width >= 48rem) {
+    :root {
+      --spacing-gutter: 1.5rem;
+    }
+  }
+
+  @media (width >= 80rem) {
+    :root {
+      --spacing-gutter: 2.5rem;
+    }
+  }
+
+  *,
+  ::before,
+  ::after,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-line);
+  }
+
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+  }
+
+  code,
+  kbd,
+  samp {
+    font-family: var(--font-mono);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  [aria-invalid="true"] {
+    border-color: var(--color-error);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: calc(var(--spacing) * 2);
+    min-height: var(--spacing-control);
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 4);
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+    color: var(--color-ink);
+    font-size: var(--text-dense);
+    font-weight: 500;
+    line-height: 1.25;
+    cursor: pointer;
+    transition-property: background-color, border-color, color;
+    transition-duration: var(--duration-hover);
+  }
 
-/* Functional Phase 03-III styling: readable defaults only. Visual design is Phase 04. */
-:focus-visible {
-  outline: 2px solid #2563eb;
-  outline-offset: 2px;
-}
+  .btn:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--color-line) 45%, var(--color-surface));
+  }
 
-.btn {
-  min-height: 2.5rem;
-  padding: 0.375rem 0.875rem;
-  border: 1px solid currentColor;
-  border-radius: 0.375rem;
-  background: transparent;
-  cursor: pointer;
-}
+  .btn:active:not(:disabled) {
+    background: var(--color-line);
+  }
 
-.btn-primary {
-  background: var(--foreground);
-  color: var(--background);
-  border-color: var(--foreground);
-}
+  .btn[aria-current]:not([aria-current="false"]),
+  .btn[aria-pressed="true"] {
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
 
-.btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
+  .btn-primary,
+  .btn-primary[aria-current]:not([aria-current="false"]) {
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+    color: var(--color-surface);
+  }
 
-.data-table th,
-.data-table td {
-  padding: 0.375rem 0.5rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--foreground) 15%, transparent);
-  text-align: left;
-  vertical-align: top;
+  .btn-primary:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--color-accent) 88%, var(--color-ink));
+  }
+
+  .btn-primary:active:not(:disabled) {
+    background: color-mix(in oklab, var(--color-accent) 76%, var(--color-ink));
+  }
+
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .btn[aria-busy="true"] {
+    cursor: progress;
+  }
+
+  input:not([type="checkbox"], [type="radio"], [type="file"]),
+  select,
+  textarea {
+    min-height: var(--spacing-control-dense);
+    padding-inline: calc(var(--spacing) * 2);
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+    color: var(--color-ink);
+  }
+
+  :is(input, select, textarea):disabled {
+    background: var(--color-canvas);
+    color: var(--color-muted);
+    cursor: not-allowed;
+  }
+
+  .data-table {
+    font-size: var(--text-table);
+    line-height: var(--text-table--line-height);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+    border-bottom: 1px solid var(--color-line);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .data-table th {
+    color: var(--color-muted);
+    font-size: var(--text-label);
+    font-weight: var(--text-label--font-weight);
+  }
 }

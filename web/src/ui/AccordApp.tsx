@@ -56,7 +56,7 @@ export function AccordApp({ samples }: { samples: Samples }) {
   const banner = bannerMessage(state.error);
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4">
+    <div className="mx-auto flex w-full max-w-content flex-col gap-4 px-gutter py-4">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
         <h1 className="text-xl font-semibold">Accord</h1>
         <nav aria-label="Workflow stages">
@@ -86,7 +86,7 @@ export function AccordApp({ samples }: { samples: Samples }) {
       </header>
 
       {banner && (
-        <div role="alert" className="flex items-start justify-between gap-3 rounded border border-red-600 p-3">
+        <div role="alert" className="flex items-start justify-between gap-3 rounded border border-error p-3">
           <p>{banner}</p>
           <button type="button" className="btn" onClick={() => dispatch({ type: "error/dismissed" })}>
             Dismiss
