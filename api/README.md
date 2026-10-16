@@ -86,6 +86,13 @@ What happens on a failure:
 - Provider attempts: at most 3, shared between retries and repair. At most one of them is a
   repair. SDK retries are disabled.
 - Output: `max_tokens` 2000.
+- Rate limits: `/api/map` 6 and `/api/suggest` 12 requests per rolling minute
+  (`RATE_LIMIT_MAP_PER_MINUTE`, `RATE_LIMIT_SUGGEST_PER_MINUTE`), and 30 OpenRouter attempts per
+  rolling 24 h across both routes, counting retries and repairs (`PROVIDER_ATTEMPTS_PER_DAY`).
+  Each limit is one bucket shared by all callers, because forwarding headers cannot be trusted.
+  Counters are in memory, kept separately by each process, and reset on restart. Over a limit the
+  API returns 429 `RATE_LIMITED` with `retryAfterSeconds` and `Retry-After`. See
+  `docs/edge-protection.md` for what these limits do not cover.
 
 Requests must have `Content-Type: application/json`, a Host of `127.0.0.1:<port>` or
 `localhost:<port>` (plus `API_INTERNAL_HOST:<port>` when set, which Docker Compose does for the
@@ -101,7 +108,7 @@ Errors use the spec §8.3 envelope `{"error":{code,message,retryable,requestId,r
 | 413 | `PAYLOAD_TOO_LARGE` |
 | 409 | `BUSY` |
 | 503 | `NOT_CONFIGURED` |
-| 429 | `RATE_LIMITED` |
+| 429 | `RATE_LIMITED` (provider 429, this server's route limit, or the daily provider budget) |
 | 502 | `MODEL_INVALID_OUTPUT` / `UPSTREAM_ERROR` |
 | 504 | `TIMEOUT` |
 

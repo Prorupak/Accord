@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     vercel_project_production_url: str | None = None
     # Dev only: logs raw model output, which contains cell values. Off by default (spec §12.2).
     log_model_output: bool = False
+    # Shared (not per-client) limits; in-memory, per process, reset on restart. See limits.py.
+    rate_limit_map_per_minute: int = Field(default=6, ge=1, le=1000)
+    rate_limit_suggest_per_minute: int = Field(default=12, ge=1, le=1000)
+    # Every OpenRouter attempt counts, including retries and the repair attempt.
+    provider_attempts_per_day: int = Field(default=30, ge=1, le=100_000)
 
     @property
     def is_configured(self) -> bool:

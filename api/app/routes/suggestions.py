@@ -30,7 +30,7 @@ both rows, or outcome "abstain" with rightId null and reasonCode "ambiguous" or
 
 @router.post("/api/suggest", response_model=SuggestResponse)
 async def suggest_matches(request: Request) -> SuggestResponse:
-    req = await read_json(request, SuggestRequest)
+    req = await read_json(request, SuggestRequest, "suggest")
     async with inference_slot(request, req.requestId):
         out, meta = await infer(
             route="suggest",

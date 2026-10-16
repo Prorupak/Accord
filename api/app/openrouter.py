@@ -9,6 +9,7 @@ import openai
 from openai import AsyncOpenAI
 from pydantic import BaseModel, ValidationError
 
+from . import limits
 from .config import get_settings
 from .http import ApiError, log
 from .schemas import (
@@ -118,6 +119,15 @@ async def infer[M: BaseModel](
     try:
         async with asyncio.timeout_at(deadline):
             while True:
+                # Reserved before the call and never refunded: a failed attempt still spends quota.
+                if (wait := limits.provider_window().acquire()) is not None:
+                    raise fail(
+                        "RATE_LIMITED",
+                        429,
+                        "Daily AI request budget for this server is used up.",
+                        retryable=True,
+                        retry_after=wait,
+                    )
                 attempts += 1
                 try:
                     completion = await _create(
