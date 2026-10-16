@@ -4,7 +4,6 @@
 import { z } from "zod";
 import type { CanonicalField, DraftMapping } from "../domain/mapping";
 import type { Dataset, Side } from "../domain/types";
-import { apiUrl } from "./availability";
 import { failure, inferenceMetaSchema, type AnalysisFailure, type InferenceMeta } from "./contract";
 import { debugLog } from "./debug";
 import { readApiError } from "./response";
@@ -63,7 +62,7 @@ export type MapResult = { ok: true; value: MapSuggestion } | { ok: false; error:
 
 export const fetchMapTransport: Transport = async (body, signal) => {
   const startedAt = performance.now();
-  const res = await fetch(apiUrl("/api/map"), { method: "POST", headers: { "content-type": "application/json" }, body, signal });
+  const res = await fetch("/api/map", { method: "POST", headers: { "content-type": "application/json" }, body, signal });
   const text = await res.text();
   debugLog("map response", res.status, `${Math.round(performance.now() - startedAt)}ms`, text);
   return { status: res.status, body: text };

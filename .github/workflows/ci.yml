@@ -71,31 +71,6 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run pytest -q
 
-  gateway:
-    name: gateway
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: gateway
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-        with:
-          version: 10.16.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24.22.0
-          cache: pnpm # zizmor: ignore[cache-poisoning] CI publishes nothing; caches only speed up installs
-          cache-dependency-path: gateway/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm exec tsc --noEmit
-      - run: pnpm test
-      - run: pnpm exec wrangler deploy --dry-run --env staging
-      - run: pnpm exec wrangler deploy --dry-run --env production
-
   e2e:
     name: e2e
     runs-on: ubuntu-24.04
@@ -119,8 +94,6 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       # The config's webServer builds and serves the app; tests stub every /api/* call.
       - run: pnpm e2e --reporter=list,html --trace=retain-on-failure
-      # The Cloudflare static export (out/) on a plain static server: no API, so no stubs.
-      - run: pnpm e2e:static --reporter=list,html --trace=retain-on-failure
       # Synthetic fixtures only (fixtures/inventory), so traces hold no real inventory data.
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -149,62 +122,3 @@ jobs:
         run: docker compose ps --all && docker compose logs --no-color
       - if: always()
         run: docker compose down --volumes
-
-  # Static site to the existing Direct Upload Pages project. Pushes to develop/main only, after all
-  # checks pass on this exact commit; PRs, forks, release/** and workflow_dispatch never get here.
-  # The environment variable ACCORD_API_BASE (the gateway origin) turns on hosted AI for the sample;
-  # unset, the site has no AI (Mode A).
-  deploy-web:
-    name: deploy-web
-    needs: [web, api, gateway, e2e, docker]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    environment:
-      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
-      url: ${{ steps.deploy.outputs.url }}
-    concurrency:
-      group: deploy-${{ github.ref_name }}
-      cancel-in-progress: false
-    env:
-      ACCORD_API_BASE: ${{ vars.ACCORD_API_BASE }}
-    defaults:
-      run:
-        working-directory: web
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-        with:
-          version: 10.16.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24.22.0
-          package-manager-cache: false # a deploy must not restore a cache a PR run could have written
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build:cloudflare
-      # The static bundle must never carry provider credentials or any API origin but the gateway's.
-      - run: "! grep -rlE 'OPENROUTER|sk-or-|api_key|GATEWAY_TOKEN|127.0.0.1:8000|onrender\\.com' out/"
-      - id: deploy
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.json
-        run: |
-          pnpm exec wrangler pages deploy out --project-name accord-web \
-            --branch "$GITHUB_REF_NAME" --commit-hash "$GITHUB_SHA" --commit-dirty=false
-          url=$(jq -r 'select(.type == "pages-deploy-detailed") | .url' "$WRANGLER_OUTPUT_FILE_PATH")
-          id=$(jq -r 'select(.type == "pages-deploy-detailed") | .deployment_id' "$WRANGLER_OUTPUT_FILE_PATH")
-          test -n "$url" && test "$url" != null
-          # Pages must agree that main is production and develop is a preview; anything else is misconfiguration.
-          env=$(jq -r 'select(.type == "pages-deploy-detailed") | .environment' "$WRANGLER_OUTPUT_FILE_PATH")
-          test "$env" = "$([ "$GITHUB_REF_NAME" = main ] && echo production || echo preview)"
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-          echo "Deployed $GITHUB_SHA to $GITHUB_REF_NAME: $url (deployment $id)" >> "$GITHUB_STEP_SUMMARY"
-      - run: pnpm exec playwright install --with-deps chromium
-      # The same static e2e suite, against this exact deployment rather than a local server.
-      - env:
-          ACCORD_E2E_BASE_URL: ${{ steps.deploy.outputs.url }}
-        run: pnpm e2e:static

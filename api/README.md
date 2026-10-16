@@ -90,9 +90,6 @@ What happens on a failure:
 Requests must have `Content-Type: application/json`, a Host of `127.0.0.1:<port>` or
 `localhost:<port>` (plus `API_INTERNAL_HOST:<port>` when set, which Docker Compose does for the
 service name `api`), and, if an `Origin` header is present, `FRONTEND_ORIGIN` as its value.
-When `GATEWAY_TOKEN` is set (the hosted deployment, `render.yaml`), every inference request must
-also send it as `x-accord-gateway-token`, and the public Host `API_PUBLIC_HOST` (or Render's
-`RENDER_EXTERNAL_HOSTNAME`) is accepted. A public Host is never trusted without a token.
 
 Errors use the spec §8.3 envelope `{"error":{code,message,retryable,requestId,retryAfterSeconds?}}`:
 

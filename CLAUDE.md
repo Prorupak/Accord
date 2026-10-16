@@ -17,7 +17,6 @@ The **API** only performs two bounded inference calls and never stores data or a
 
 - `api/`: FastAPI backend (Python 3.13, uv). See `api/README.md` for endpoints, limits and error codes.
 - `web/`: Next.js 16 / React 19 / Tailwind 4 frontend. Working workflow UI in `web/src/ui/`.
-- `gateway/`: Cloudflare Worker for sample-only public AI, with a quota Durable Object (`pnpm test`). It forwards to the API hosted on Render (`render.yaml`). Deploys: `docs/cloudflare-deploy.md`.
 - `fixtures/`: test CSV data.
 
 ## Commands
@@ -39,8 +38,6 @@ pnpm dev        # http://localhost:3000
 pnpm lint
 pnpm build
 npx tsc --noEmit
-pnpm build:cloudflare   # static export to out/ (Mode A, no AI actions); see docs/progress.md
-pnpm e2e:static         # builds out/ and runs e2e/*.static.ts against a plain static server
 ```
 
 Docker (repo root; see `docs/docker.md`): `docker compose up -d --build`, then

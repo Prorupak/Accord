@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import AliasChoices, Field, SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 API_DIR = Path(__file__).resolve().parent.parent
@@ -18,14 +18,6 @@ class Settings(BaseSettings):
     frontend_origin: str = "http://localhost:3000"
     # One extra trusted Host name for a container network (Compose sets "api"). A bare label only.
     api_internal_host: str | None = Field(default=None, pattern=r"^[a-z0-9-]+$")
-    # Public hostname behind the hosted gateway (Render sets RENDER_EXTERNAL_HOSTNAME). Trusted only
-    # together with gateway_token, which inference requests must then carry.
-    api_public_host: str | None = Field(
-        default=None,
-        pattern=r"^[a-z0-9.-]+$",
-        validation_alias=AliasChoices("API_PUBLIC_HOST", "RENDER_EXTERNAL_HOSTNAME"),
-    )
-    gateway_token: SecretStr | None = None
     # Dev only: logs raw model output, which contains cell values. Off by default (spec §12.2).
     log_model_output: bool = False
 

@@ -167,22 +167,6 @@ def test_internal_host_only_when_configured(client, provider, monkeypatch):
     assert post(client, headers=origin).status_code == 403
 
 
-def test_public_host_requires_gateway_token(client, provider, monkeypatch):
-    public = {"host": "accord-api.onrender.com"}
-    monkeypatch.setenv("RENDER_EXTERNAL_HOSTNAME", "accord-api.onrender.com")
-    config.get_settings.cache_clear()
-    assert post(client, headers=public).status_code == 400  # no token configured: host untrusted
-    monkeypatch.setenv("GATEWAY_TOKEN", "t0ken")
-    config.get_settings.cache_clear()
-    provider.script = [model_output(B=side(name=None))]
-    assert post(client, headers={**public, "x-accord-gateway-token": "t0ken"}).status_code == 200
-    for sent in ({}, {"x-accord-gateway-token": "wrong"}, {"x-accord-gateway-token": "t0ken2"}):
-        assert post(client, headers={**public, **sent}).status_code == 403
-    # Once a token is set it is required on every host, local ones included.
-    assert post(client).status_code == 403
-    assert len(provider.calls) == 1
-
-
 def test_internal_host_rejects_patterns(monkeypatch):
     for bad in ("*", "api:8000", "evil.example"):
         monkeypatch.setenv("API_INTERNAL_HOST", bad)
