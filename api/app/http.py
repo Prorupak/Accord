@@ -97,7 +97,7 @@ _slot = asyncio.Lock()
 
 
 @asynccontextmanager
-async def inference_slot(request_id: str):
+async def inference_slot(request: Request, request_id: str):
     if _slot.locked():
         raise ApiError(
             "BUSY",
@@ -107,4 +107,27 @@ async def inference_slot(request_id: str):
             request_id=request_id,
         )
     async with _slot:
-        yield
+        # A client that hangs up (Cancel in the UI) must free the slot now, not after the deadline.
+        task = asyncio.current_task()
+        disconnected = False
+
+        async def watch() -> None:
+            nonlocal disconnected
+            while (await request.receive())["type"] != "http.disconnect":
+                pass
+            disconnected = True
+            task.cancel()
+
+        watcher = asyncio.create_task(watch())
+        try:
+            yield
+        except asyncio.CancelledError:
+            if not disconnected:
+                raise
+            task.uncancel()
+            log.info("client disconnected request=%s", request_id)
+            raise ApiError(
+                "CANCELLED", 499, "Client cancelled the request.", request_id=request_id
+            ) from None
+        finally:
+            watcher.cancel()
