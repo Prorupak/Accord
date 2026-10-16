@@ -1,0 +1,53 @@
+# Local integration only: docker compose up -d --build, then open http://localhost:3000.
+# See docs/docker.md. Nothing here deploys anywhere.
+name: accord
+
+x-hardening: &hardening
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  read_only: true
+  restart: unless-stopped
+  networks: [accord]
+
+services:
+  api:
+    <<: *hardening
+    build:
+      context: ./api
+    image: accord-api:local
+    # Runtime-only secrets (OPENROUTER_API_KEY, OPENROUTER_MODEL). Missing file → 503 NOT_CONFIGURED.
+    env_file:
+      - path: api/.env
+        required: false
+    environment:
+      API_PORT: "8000"
+      API_INTERNAL_HOST: api
+      FRONTEND_ORIGIN: http://localhost:3000
+    expose: ["8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    tmpfs: [/tmp]
+
+  web:
+    <<: *hardening
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+      args:
+        ACCORD_API_ORIGIN: http://api:8000
+    image: accord-web:local
+    environment:
+      ACCORD_API_ORIGIN: http://api:8000
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    tmpfs: [/tmp, /app/.next/cache]
+
+networks:
+  accord: {}
