@@ -2,6 +2,14 @@
 
 Last updated: 2026-10-16
 
+## Deployment phase 01 (2026-10-16): Docker and Compose
+
+Done. `web/Dockerfile` (Next.js standalone, repo-root context), `api/Dockerfile` (uv locked
+production sync, uvicorn on 0.0.0.0), `compose.yaml` (web on 127.0.0.1:3000 only, api internal with a
+`/health` healthcheck), `.dockerignore` files, `scripts/docker-smoke.sh` and `docs/docker.md`. The
+API Host guard gained an opt-in `API_INTERNAL_HOST` (one bare hostname; unset keeps the old
+behaviour). No deploy, CI or Cloudflare changes.
+
 ## Phase 04-III (2026-10-16): Export experience
 
 Done. Export follows `docs/accord-export-design-handoff/`. It has a flat four-cell summary `dl`, a
