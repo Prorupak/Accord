@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="color-scheme" content="light" />
+<title>Accord — Mapping workspace concept</title>
+<style>
+  :root {
+    --canvas:#FAFAFA;--surface:#FFFFFF;--ink:#17191D;--muted:#5F646D;
+    --line:#DFE2E7;--line-strong:#868B94;--accent:#244BEA;--accent-soft:#EEF2FF;
+    --success:#166534;--success-soft:#F0FDF4;--review:#92400E;--review-soft:#FFFBEB;
+    --error:#B91C1C;--error-soft:#FEF2F2;
+    --radius-control:8px;--radius-panel:12px;
+    --font:"Helvetica Neue",Helvetica,Arial,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--canvas);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  button,select,input{font:inherit}
+  button{cursor:pointer}
+  button:disabled{opacity:.46;cursor:not-allowed}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  .topbar{height:64px;border-bottom:1px solid var(--line);background:var(--surface)}
+  .top-inner{max-width:1440px;margin:auto;padding:0 40px;height:100%;display:flex;align-items:center;justify-content:space-between}
+  .wordmark{font-weight:650;letter-spacing:-.055em;font-size:23px;text-decoration:none;color:var(--ink);line-height:1}
+  .wordmark span{color:var(--accent)}
+  .top-right{display:flex;gap:12px;align-items:center}
+  .smallnote{color:var(--muted);font-size:12px}
+  .reset{border:0;background:transparent;color:var(--ink);font-size:13px;font-weight:550;display:flex;align-items:center;gap:7px;padding:10px;border-radius:var(--radius-control)}
+  .reset:hover{background:#F4F5F7}
+  .reset svg{width:15px;height:15px}
+  .shell{max-width:1240px;padding:0 40px;margin:0 auto}
+  .steps{list-style:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0;padding:28px 0 0}
+  .steps li{min-width:0}
+  .step{height:42px;width:100%;display:flex;align-items:flex-start;gap:7px;text-align:left;padding:4px 3px 11px;border:0;border-bottom:2px solid var(--line);background:transparent;font-size:13px;color:var(--muted);white-space:nowrap}
+  .step .stepnum{font-size:12px;font-variant-numeric:tabular-nums}
+  .step.current{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+  .step.done{color:var(--ink);border-bottom-color:var(--ink)}
+  .step.done .stepnum{color:var(--success)}
+  .step:disabled{opacity:1;cursor:default;color:var(--muted)}
+  .intro{padding:38px 0 0;display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
+  .eyebrow{font-size:12px;font-weight:600;letter-spacing:.085em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+  h1{font-size:36px;line-height:1.18;letter-spacing:-.028em;font-weight:600;margin:0}
+  .lead{font-size:15px;color:var(--muted);margin:9px 0 0;max-width:690px}
+  .intro-aside{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px;padding-bottom:3px;white-space:nowrap}
+  .status-dot{height:7px;width:7px;border-radius:50%;background:var(--success);display:inline-block;flex:none}
+  .source-band{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-panel);margin-top:30px;overflow:hidden}
+  .source-summary{display:flex;align-items:center;gap:13px;padding:20px 24px;min-width:0}
+  .source-summary+ .source-summary{border-left:1px solid var(--line)}
+  .source-letter{display:grid;place-items:center;height:42px;width:42px;flex:0 0 42px;border:1px solid var(--line);background:var(--canvas);border-radius:9px;font-size:17px;font-weight:600;letter-spacing:-.02em}
+  .source-summary:nth-child(2) .source-letter{color:var(--accent);background:var(--accent-soft);border-color:#C8D1FF}
+  .file-main{min-width:0;flex:1}
+  .kicker{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .filename{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:3px 0 1px}
+  .file-meta{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .file-ready{display:inline-flex;align-items:center;gap:5px;color:var(--success);font-weight:550;font-size:12px;white-space:nowrap}
+  .file-ready svg{height:15px;width:15px}
+  .workspace{padding-top:40px}
+  .section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:22px}
+  h2{font-weight:600;font-size:22px;letter-spacing:-.015em;line-height:1.28;margin:0}
+  .section-description{font-size:13px;color:var(--muted);margin:6px 0 0}
+  .ai-trigger{border:1px solid var(--line-strong);border-radius:8px;background:white;min-height:44px;display:inline-flex;align-items:center;gap:8px;padding:0 14px;font-size:13px;font-weight:600;white-space:nowrap;transition:background 140ms,color 140ms,border-color 140ms}
+  .ai-trigger:hover{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+  .ai-trigger svg{height:17px;width:17px;color:var(--accent)}
+  .ai-draft{display:none;border:1px solid var(--line);background:var(--surface);border-radius:var(--radius-panel);padding:18px 20px;margin:-4px 0 18px;gap:18px;align-items:center;justify-content:space-between}
+  .ai-draft.open{display:flex}
+  .ai-draft strong{font-size:14px;font-weight:600}
+  .ai-draft p{font-size:12px;color:var(--muted);margin:3px 0 0;max-width:720px}
+  .ai-actions{display:flex;gap:9px;align-items:center;flex:none}
+  .button{display:inline-flex;gap:8px;align-items:center;justify-content:center;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);min-height:44px;padding:0 16px;border-radius:var(--radius-control);font-size:13px;font-weight:600;transition:background 140ms,color 140ms}
+  .button:hover:not(:disabled){background:#F4F5F7}
+  .button.primary{background:var(--accent);border-color:var(--accent);color:white}
+  .button.primary:hover:not(:disabled){background:#1939C3}
+  .button svg{height:16px;width:16px}
+  .plain-button{background:transparent;border:0;padding:10px;color:var(--muted);font-size:13px;font-weight:600;border-radius:8px}
+  .plain-button:hover{color:var(--ink);background:#F1F2F4}
+  .mapping-grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:var(--radius-panel);background:var(--surface);overflow:hidden}
+  .source-panel{padding:26px 28px 22px;min-width:0}
+  .source-panel+ .source-panel{border-left:1px solid var(--line)}
+  .panel-title{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-bottom:21px;border-bottom:1px solid var(--line)}
+  .panel-title h3{font-size:17px;margin:0;font-weight:600;letter-spacing:-.015em;display:flex;align-items:center;gap:9px}
+  .panel-title h3 .mini{display:grid;place-items:center;height:25px;width:25px;border:1px solid var(--line);border-radius:6px;font-size:12px;color:var(--muted)}
+  .panel-title p{font-size:12px;color:var(--muted);margin:4px 0 0}
+  .link-state{font-size:12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .form-section{padding-top:24px}
+  .form-section.optional-section{border-top:1px solid var(--line);margin-top:18px}
+  .group-heading{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:11px;font-weight:650;letter-spacing:.075em;text-transform:uppercase;margin-bottom:17px}
+  .group-heading .divider{flex:1;height:1px;background:var(--line)}
+  .field{margin-bottom:23px}
+  .field:last-child{margin-bottom:0}
+  .field-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .field label{font-size:14px;font-weight:600}
+  .field-flag{font-size:11px;color:var(--muted);font-weight:500;white-space:nowrap}
+  .field-flag.ai{color:var(--review);font-weight:600}
+  .help{font-size:12px;color:var(--muted);margin:2px 0 9px}
+  .selectwrap{position:relative}
+  .selectwrap select{width:100%;border-radius:var(--radius-control);border:1px solid var(--line-strong);background:var(--surface);height:42px;appearance:none;padding:0 39px 0 13px;font-size:14px;font-weight:500;color:var(--ink);cursor:pointer;transition:border-color 140ms}
+  .selectwrap select:hover{border-color:var(--ink)}
+  .selectwrap select.unmapped{color:var(--muted);font-weight:400}
+  .selectwrap svg{position:absolute;right:12px;top:50%;width:15px;height:15px;transform:translateY(-50%);pointer-events:none;color:var(--muted)}
+  .sample{min-height:29px;padding:9px 0 0 11px;border-left:2px solid var(--line);margin-top:11px;font-size:12px;color:var(--muted);line-height:1.5}
+  .sample strong{display:block;font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.075em;margin-bottom:3px;text-transform:uppercase}
+  .sample .examples{display:block;color:var(--ink);font-size:12px;overflow-wrap:anywhere}
+  .sample.is-empty{border-left-color:transparent;padding-left:0;color:var(--muted)}
+  .sample.ai-highlight{border-left-color:var(--review)}
+  .note-under{margin:12px 0 0;font-size:12px;color:var(--muted)}
+  .rules{padding:32px 0 0}
+  .rules-head{margin-bottom:18px}
+  .rule-grid{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .rule{padding:21px 22px 18px 0}
+  .rule+.rule{border-left:1px solid var(--line);padding-left:24px}
+  .checklabel{display:flex;align-items:flex-start;gap:12px;cursor:pointer;line-height:1.42}
+  input[type=checkbox]{appearance:none;margin:1px 0 0;min-width:19px;width:19px;height:19px;border:1px solid var(--line-strong);border-radius:5px;background:white;position:relative;cursor:pointer}
+  input[type=checkbox]:checked{background:var(--accent);border-color:var(--accent)}
+  input[type=checkbox]:checked::after{content:"";position:absolute;left:5px;top:1px;width:5px;height:9px;border:solid white;border-width:0 2px 2px 0;transform:rotate(45deg)}
+  .rule-name{font-size:14px;font-weight:600}
+  .rule-desc{margin:5px 0 0 31px;color:var(--muted);font-size:12px;max-width:420px}
+  .policy{color:var(--muted);font-size:12px;margin-top:13px;line-height:1.6}
+  .policy strong{color:var(--ink);font-weight:600}
+  .footer-actions{position:relative;margin:32px 0 20px;padding:17px 20px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-panel);display:flex;gap:20px;align-items:center;justify-content:space-between}
+  .footer-status{display:flex;align-items:center;gap:11px;min-width:0}
+  .status-icon{height:35px;width:35px;flex:0 0 35px;display:grid;place-items:center;border-radius:50%;background:var(--review-soft);color:var(--review)}
+  .status-icon.ready{background:var(--success-soft);color:var(--success)}
+  .status-icon svg{height:18px;width:18px}
+  .footer-status strong{font-size:14px;display:block;font-weight:600}
+  .footer-status p{color:var(--muted);font-size:12px;margin:2px 0 0;line-height:1.4}
+  .action-right{display:flex;gap:11px;align-items:center;flex:none}
+  .copyright{padding:4px 0 28px;color:var(--muted);font-size:11px;display:flex;align-items:center;justify-content:space-between;gap:15px}
+  .toast{position:fixed;left:50%;bottom:102px;z-index:20;transform:translateX(-50%) translateY(10px);background:var(--ink);color:white;border-radius:8px;padding:12px 16px;font-size:13px;box-shadow:0 5px 20px #17191D20;max-width:min(440px,calc(100vw - 32px));opacity:0;pointer-events:none;transition:opacity 180ms,transform 180ms;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  @media (max-width:1100px){.shell{padding:0 24px}.source-panel{padding:22px}.top-inner{padding:0 24px}.source-summary{padding:18px}}
+  @media (max-width:760px){
+    .top-inner{padding:0 16px}.shell{padding:0 16px}.smallnote{display:none}
+    .steps{gap:5px;padding-top:21px}.step{font-size:12px;gap:4px}
+    .intro{padding-top:31px;display:block}.intro-aside{display:none}h1{font-size:28px}.lead{font-size:14px}
+    .source-band{grid-template-columns:1fr;margin-top:24px}.source-summary{padding:16px}.source-summary+.source-summary{border-left:0;border-top:1px solid var(--line)}
+    .workspace{padding-top:33px}.section-head{align-items:flex-start;flex-direction:column;gap:16px;margin-bottom:18px}
+    .ai-draft.open{display:block}.ai-actions{margin-top:14px}
+    .mapping-grid{grid-template-columns:1fr}.source-panel+.source-panel{border-left:0;border-top:1px solid var(--line)}
+    .source-panel{padding:20px}.rule-grid{grid-template-columns:1fr}.rule{padding:16px 0}.rule+.rule{padding:16px 0;border-left:0;border-top:1px solid var(--line)}
+    .footer-actions{padding:15px 14px;gap:12px;margin-top:26px}.action-right{min-width:0}.action-right .button{padding:0 12px}.footer-status p{max-width:200px}
+    .copyright{align-items:flex-start;flex-direction:column;gap:4px}
+  }
+  @media (max-width:440px){
+    .footer-actions{align-items:stretch;flex-direction:column;gap:14px}.action-right .button{width:100%}.action-right{width:100%}
+    .reset{font-size:12px}.wordmark{font-size:22px}.filename{font-size:13px}
+    .step{font-size:11px}.step .stepnum{font-size:11px}.source-letter{height:36px;width:36px;flex-basis:36px}
+    .panel-title h3{font-size:16px}.link-state{font-size:11px}
+  }
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+</style>
+</head>
+<body>
+  <header class="topbar"><div class="top-inner">
+    <a class="wordmark" href="#top" aria-label="Accord, mapping prototype">accord<span>.</span></a>
+    <div class="top-right"><span class="smallnote">MAPPING WORKSPACE / CONCEPT</span><button class="reset" type="button" id="resetBtn" aria-label="Reset prototype selections">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.8-6.5"/><path d="M3 4v5h5"/></svg>Start over</button></div>
+  </div></header>
+  <div class="shell" id="top">
+    <nav aria-label="Workflow steps"><ol class="steps">
+      <li><button type="button" class="step done" id="importNav"><span class="stepnum" aria-hidden="true">✓</span><span>Import<span class="sr-only">, complete</span></span></button></li>
+      <li><button type="button" class="step current" aria-current="step"><span class="stepnum">02</span><span>Mapping</span></button></li>
+      <li><button class="step" type="button" disabled><span class="stepnum">03</span><span>Review</span></button></li>
+      <li><button class="step" type="button" disabled><span class="stepnum">04</span><span>Export</span></button></li>
+    </ol></nav>
+    <div class="intro">
+      <div><p class="eyebrow">02 / MAPPING</p><h1 id="stage-title">Understand your columns.</h1><p class="lead">Connect the fields that describe each product. A little context now makes every comparison clearer later.</p></div>
+      <div class="intro-aside"><span class="status-dot"></span>Two validated source files</div>
+    </div>
+    <main aria-labelledby="stage-title">
+      <section class="source-band" aria-label="Imported files">
+        <div class="source-summary"><div class="source-letter" aria-hidden="true">A</div><div class="file-main"><div class="kicker">SOURCE A</div><div class="filename" title="accord-source-a.csv">accord-source-a.csv</div><div class="file-meta">22 records · 6 columns · 1,045 bytes</div></div><span class="file-ready"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>Ready</span></div>
+        <div class="source-summary"><div class="source-letter" aria-hidden="true">B</div><div class="file-main"><div class="kicker">SOURCE B</div><div class="filename" title="accord-source-b.csv">accord-source-b.csv</div><div class="file-meta">26 records · 6 columns · 1,217 bytes</div></div><span class="file-ready"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>Ready</span></div>
+      </section>
+      <section class="workspace" aria-labelledby="workspace-heading">
+        <div class="section-head"><div><h2 id="workspace-heading">Define the fields<span style="color:var(--accent)">.</span></h2><p class="section-description">Choose a corresponding column for each field. Previews show values from the source file.</p></div>
+          <button id="draftBtn" type="button" class="ai-trigger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2Z"/><path d="m20 17 .8 2.2L23 20l-2.2.8L20 23l-.8-2.2L17 20l2.2-.8L20 17Z"/></svg><span>Preview AI draft</span></button>
+        </div>
+        <section id="aiDraft" class="ai-draft" aria-live="polite"><div><strong>Suggested mapping draft is ready <span style="font-weight:500;color:var(--review);font-size:12px">· DEMO</span></strong><p>This prototype suggests columns based on the illustrative headers and values. No AI call is made; you still choose whether to apply the draft.</p></div><div class="ai-actions"><button class="plain-button" id="dismissDraft" type="button">Dismiss</button><button class="button" id="applyDraft" type="button">Apply draft <span aria-hidden="true">→</span></button></div></section>
+        <div class="mapping-grid">
+          <section class="source-panel" aria-labelledby="panel-a-title"><div class="panel-title"><div><h3 id="panel-a-title"><span class="mini">A</span> Source A</h3><p>accord-source-a.csv</p></div><span class="link-state" id="side-a-count">0 of 2 core linked</span></div><div id="fieldsA"></div></section>
+          <section class="source-panel" aria-labelledby="panel-b-title"><div class="panel-title"><div><h3 id="panel-b-title"><span class="mini">B</span> Source B</h3><p>accord-source-b.csv</p></div><span class="link-state" id="side-b-count">0 of 2 core linked</span></div><div id="fieldsB"></div></section>
+        </div>
+        <p class="note-under">One column can only map to one field within the same file. Optional fields can remain unmapped.</p>
+      </section>
+      <section class="rules" aria-labelledby="rules-title"><div class="rules-head"><h2 id="rules-title">Comparison rules<span style="color:var(--accent)">.</span></h2><p class="section-description">A few decisions about identity and quantities before reconciliation begins.</p></div>
+        <div class="rule-grid">
+          <div class="rule"><label class="checklabel"><input id="caseInsensitive" type="checkbox"/><span class="rule-name">Match IDs case-insensitively</span></label><p class="rule-desc">By default, <code>abc-01</code> and <code>ABC-01</code> are different. Leading zeros are always preserved.</p></div>
+          <div class="rule"><label class="checklabel"><input id="sharedUnit" type="checkbox"/><span class="rule-name">Both files use the same quantity unit</span></label><p class="rule-desc">Use this only when neither source maps a unit column. Otherwise quantity differences are marked as unknown.</p></div>
+        </div>
+        <p class="policy"><strong>Built-in safeguards:</strong> conflicting non-empty product IDs cannot pair; duplicate product IDs are quarantined, including for manual matching.</p>
+      </section>
+      <section class="footer-actions" aria-label="Mapping confirmation"><div class="footer-status" role="status" aria-live="polite"><div class="status-icon" id="footerIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5m0 4h.01"/></svg></div><div><strong id="mappingStatus">Review required mappings</strong><p id="mappingHelp">Select the product name and quantity on both sides.</p></div></div><div class="action-right"><button id="confirmBtn" class="button primary" type="button" disabled>Confirm mappings <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></button></div></section>
+      <div class="copyright"><span>Accord / Editorial Precision — Mapping concept</span><span>Illustrative data and local interactions only · No files or data are sent</span></div>
+    </main>
+  </div>
+  <div id="toast" role="status" class="toast" aria-live="polite"></div>
+<script>
+(function(){
+  'use strict';
+  const ICON_CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+  const DATA = {
+    A: { columns: [
+      {id:'c0',name:'sku',values:['P01','P03','00042']},
+      {id:'c1',name:'item_name',values:['Stainless steel flask 750ml','Organic cotton tote natural','White ceramic mug']},
+      {id:'c2',name:'on_hand',values:['12','8','6']},
+      {id:'c3',name:'unit',values:['pcs','pcs','pcs']},
+      {id:'c4',name:'category',values:['Drinkware','Accessories','Kitchen']},
+      {id:'c5',name:'warehouse',values:['Central','Central','East']}
+    ]},
+    B: {columns: [
+      {id:'c0',name:'product_code',values:['P01','P03','00042']},
+      {id:'c1',name:'description',values:['Stainless steel bottle 750ml','Natural cotton shopping bag','Ceramic mug white']},
+      {id:'c2',name:'stock',values:['12','8','5']},
+      {id:'c3',name:'unit',values:['pcs','pcs','pcs']},
+      {id:'c4',name:'location',values:['Primary','Primary','Backroom']},
+      {id:'c5',name:'supplier',values:['Acme','Acme','Studio']}
+    ]}
+  };
+  const fields = [
+    {id:'name',title:'Product name',help:'The description used to find equivalent products.',required:true},
+    {id:'quantity',title:'Quantity',help:'Inventory amount used to calculate differences.',required:true},
+    {id:'productId',title:'Product ID',help:'A stable identifier, if your export includes one.',required:false},
+    {id:'unit',title:'Unit',help:'Unit of measure, such as pcs, kg or box.',required:false},
+  ];
+  const START = {A:{name:'c1',quantity:'c2',productId:'c0',unit:''}, B:{name:'c1',quantity:'',productId:'c0',unit:''}};
+  const SUGGEST = {A:{name:'c1',quantity:'c2',productId:'c0',unit:''},B:{name:'c1',quantity:'c2',productId:'c0',unit:''}};
+  let selections=structuredClone(START), aiOpen=false, aiApplied=false, toastTimeout;
+  const esc = (t)=>String(t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function sourceField(side,id){const colId=selections[side][id];return DATA[side].columns.find(c=>c.id===colId);}
+  function showToast(message){const el=document.getElementById('toast');el.textContent=message;el.classList.add('show');clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>el.classList.remove('show'),3600);}
+  function renderPanels(){
+    for(const side of ['A','B']){
+      const root=document.getElementById(side==='A'?'fieldsA':'fieldsB');
+      let html='';
+      for(const [group,required] of [['Core fields',true],['Optional fields',false]]){
+        html+=`<div class="form-section ${!required?'optional-section':''}"><div class="group-heading"><span>${group}</span><span class="divider"></span></div>`;
+        for(const field of fields.filter(f=>f.required===required)){
+          const chosen=selections[side][field.id];
+          const col=sourceField(side,field.id);
+          const aiFlag=aiOpen&&SUGGEST[side][field.id]!==''&&SUGGEST[side][field.id]!==chosen;
+          const appliedFlag=aiApplied&&chosen===SUGGEST[side][field.id];
+          html+=`<div class="field" data-side="${side}" data-field="${field.id}">
+            <div class="field-top"><label for="${side}-${field.id}">${field.title}</label><span class="field-flag ${aiFlag?'ai':''}">${aiFlag?'AI draft available':appliedFlag?'Draft applied':(required?'Required':'Optional')}</span></div>
+            <p class="help" id="help-${side}-${field.id}">${field.help}</p>
+            <div class="selectwrap"><select id="${side}-${field.id}" data-side="${side}" data-field="${field.id}" aria-describedby="help-${side}-${field.id} preview-${side}-${field.id}" class="${chosen?'':'unmapped'}">
+              <option value="">Not mapped</option>
+              ${DATA[side].columns.map(c=>`<option value="${c.id}" ${chosen===c.id?'selected':''} ${Object.entries(selections[side]).some(([key,val])=>key!==field.id&&val===c.id)?'disabled':''}>${esc(c.name)}</option>`).join('')}
+            </select>${ICON_CHEVRON}</div>
+            <div class="sample ${!col?'is-empty':''} ${aiFlag?'ai-highlight':''}" id="preview-${side}-${field.id}">${col?`<strong>Preview from ${esc(col.name)}</strong><span class="examples">${col.values.map(esc).join('  ·  ')}</span>`:(aiFlag?'AI suggests '+esc(DATA[side].columns.find(c=>c.id===SUGGEST[side][field.id]).name):'Choose a column to preview its values.')}</div>
+          </div>`;
+        }
+        html+='</div>';
+      }
+      root.innerHTML=html;
+      root.querySelectorAll('select').forEach(s=>s.addEventListener('change',(event)=>{
+        const target=event.currentTarget;selections[target.dataset.side][target.dataset.field]=target.value;
+        aiApplied=false;renderPanels();updateReadiness();
+        const replacement=document.getElementById(target.id);replacement.focus();
+      }));
+      const core=['name','quantity'].filter(k=>selections[side][k]).length;
+      document.getElementById(side==='A'?'side-a-count':'side-b-count').textContent=`${core} of 2 core linked`;
+    }
+  }
+  function updateReadiness(){
+    const completed=['A','B'].reduce((sum,side)=>sum+['name','quantity'].filter(k=>selections[side][k]).length,0);
+    const ready=completed===4;
+    const title=document.getElementById('mappingStatus');
+    const desc=document.getElementById('mappingHelp');
+    title.textContent=ready?'All core fields mapped':`${completed} of 4 required mappings complete`;
+    desc.textContent=!ready?'Map the missing product name or quantity field to continue.':(!selections.A.unit&&!selections.B.unit&&!document.getElementById('sharedUnit').checked?'Ready to confirm. Quantities will have unknown unit status until units are confirmed.':'Ready to initialize reconciliation using these mappings.');
+    document.getElementById('confirmBtn').disabled=!ready;
+    document.getElementById('footerIcon').classList.toggle('ready',ready);
+    document.getElementById('footerIcon').innerHTML=ready?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5m0 4h.01"/></svg>';
+  }
+  function setDraftOpen(open){aiOpen=open;document.getElementById('aiDraft').classList.toggle('open',open);document.getElementById('draftBtn').setAttribute('aria-expanded',String(open));renderPanels();}
+  document.getElementById('draftBtn').addEventListener('click',()=>setDraftOpen(!aiOpen));
+  document.getElementById('dismissDraft').addEventListener('click',()=>setDraftOpen(false));
+  document.getElementById('applyDraft').addEventListener('click',()=>{
+    selections=structuredClone(SUGGEST);aiApplied=true;setDraftOpen(false);updateReadiness();showToast('Illustrative AI draft applied. You can still edit every mapping.');
+  });
+  document.getElementById('sharedUnit').addEventListener('change',updateReadiness);
+  document.getElementById('confirmBtn').addEventListener('click',()=>{
+    if(document.getElementById('confirmBtn').disabled)return;
+    showToast('Mappings ready — this demo does not change real Accord state.');
+  });
+  document.getElementById('importNav').addEventListener('click',()=>showToast('Import navigation is illustrative in this standalone prototype.'));
+  document.getElementById('resetBtn').addEventListener('click',()=>{
+    selections=structuredClone(START);aiApplied=false;document.getElementById('caseInsensitive').checked=false;
+    document.getElementById('sharedUnit').checked=false;setDraftOpen(false);updateReadiness();showToast('Prototype reset to its initial state.');
+  });
+  renderPanels();updateReadiness();
+})();
+</script>
+</body>
+</html>

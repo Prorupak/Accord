@@ -207,6 +207,44 @@ Rules:
   opacity, not the faded primary.
 - There is no privacy paragraph on Import; see the open item in `docs/progress.md`.
 
+## Mapping (`web/src/ui/MappingScreen.tsx`)
+
+`docs/accord-mapping-prototype.html` is the reference, and the screen matches it. The shell keeps its
+own header, stepper and intro. The prototype's concept tag, the "Two validated source files" aside and
+the footer line are not ported. The screen shows, top to bottom:
+
+- **Source strip:** `section aria-label="Imported files"`, one bordered surface split by a hairline.
+  Each cell has a 42px letter tile (B is tinted `accent-soft`/`accent`), an uppercase `SOURCE A` kicker,
+  the file name, `N records · M columns · X bytes` and a `success` `✓ Ready`.
+- **Define the fields.** (`h2`): the section head has the AI trigger on the right (a `.btn` with an
+  accent sparkle). A draft strip opens under the head with `Dismiss` and `Apply draft →`. A failure
+  shows in the same strip as `role="alert"`. Below that, one bordered surface holds both `SidePanel`s.
+  Each panel has an `h3` with a letter chip, `n of 2 core linked`, and `role="group"` sections
+  `CORE FIELDS` and `OPTIONAL FIELDS` (uppercase caption, then a hairline; optional sits under a top
+  rule).
+- **Field row:** label (`text-dense` 600), flag, helper text, and a 42px select (`appearance-none`,
+  inline chevron, unmapped shown muted). Options are the column headers only. A blank or repeated
+  header gets `Column N` / `(column N)`. Under the select, the preview `PREVIEW FROM <header>` lists
+  the first three non-blank values joined by `·`, behind a 2px left rule. Unmapped, it reads `Choose
+  a column to preview its values.` The select's `aria-describedby` points to the help text, the
+  preview, the AI line and the error.
+
+| AI state (per field) | Flag | Line under the field (`-ai`) |
+| --- | --- | --- |
+| No draft, or draft agrees with the field | `Required` / `Optional` | — |
+| Draft open and differs from the field | `AI draft available` (`text-review`) | `AI suggests <header>. <explanation>` behind a `review` left rule |
+| Applied, value unchanged | `Suggested` badge (`bg-review-soft text-review`) | explanation |
+| Applied, then changed by hand | `Edited` (muted) | `AI suggested <header>.` |
+
+- **Comparison rules.** (`h2`): two rules between hairlines. Each has a custom 20px checkbox (a native
+  input with `appearance-none` and an accent fill plus a check when checked) and a description linked
+  by `aria-describedby`. When a unit is mapped, the shared-unit slot explains units instead. Below
+  the rules sits one `Built-in safeguards:` line.
+- **Confirmation bar:** an anchored panel, not sticky (a sticky bar could cover a focused select at
+  200% zoom). It has a status icon and a `role="status"` block (`n of 4 required mappings complete` /
+  `Mappings need attention` / `All core fields mapped`) on the left. On the right is `Confirm mappings →`,
+  gated by `view.canConfirmMappings`, with the standard disabled primary. It is full width below `sm`.
+
 ## Accessibility requirements
 
 WCAG 2.2 AA: use semantic tables, buttons and fieldsets. Every control has a visible label, and a
