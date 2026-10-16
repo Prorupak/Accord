@@ -43,6 +43,8 @@ jobs:
           cache: pnpm # zizmor: ignore[cache-poisoning] CI publishes nothing; caches only speed up installs
           cache-dependency-path: web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      # LayoutProps/PageProps are generated into .next/types, which a fresh checkout lacks
+      - run: pnpm exec next typegen
       - run: pnpm exec tsc --noEmit
       - run: pnpm lint
       - run: pnpm test

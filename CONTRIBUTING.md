@@ -38,7 +38,7 @@ CI runs four jobs on every pull request. Run the same commands locally:
 
 | Job | Commands |
 | --- | --- |
-| `web` | `cd web && pnpm exec tsc --noEmit && pnpm lint && pnpm test && pnpm build` |
+| `web` | `cd web && pnpm exec next typegen && pnpm exec tsc --noEmit && pnpm lint && pnpm test && pnpm build` |
 | `api` | `cd api && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` |
 | `e2e` | `cd web && pnpm exec playwright install chromium` (once), then `pnpm e2e` |
 | `docker` | `docker compose up -d --build --wait && scripts/docker-smoke.sh; docker compose down` |

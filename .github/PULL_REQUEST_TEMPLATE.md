@@ -14,7 +14,7 @@
 
 <!-- Commands you ran and their results. Mark items that don't apply as N/A. -->
 
-- [ ] `web`: `pnpm exec tsc --noEmit && pnpm lint && pnpm test && pnpm build`
+- [ ] `web`: `pnpm exec next typegen && pnpm exec tsc --noEmit && pnpm lint && pnpm test && pnpm build`
 - [ ] `api`: `uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
 - [ ] `e2e`: `pnpm e2e`
 - [ ] `docker`: `docker compose up -d --build --wait && scripts/docker-smoke.sh`

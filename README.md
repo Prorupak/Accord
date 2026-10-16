@@ -116,7 +116,7 @@ as the source files.
 ```sh
 cd web
 pnpm test                   # vitest: domain, workflow, orchestration, UI integration
-npx tsc --noEmit && pnpm lint && pnpm build
+pnpm exec next typegen && npx tsc --noEmit && pnpm lint && pnpm build
 pnpm exec playwright install chromium   # once
 pnpm e2e                    # Playwright against a production build on :3100
 
