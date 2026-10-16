@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { aiAvailability } from "../analysis/availability";
 import type { ReconciliationState } from "../domain/reconcile";
 import type { RowId } from "../domain/types";
-import { loadedDatasets } from "../workflow/selectors";
 import type { Analysis, Workflow } from "./AccordApp";
 import { AnalysisPanel } from "./AnalysisPanel";
 import { RecordDetail, StatusMark, TONE_TEXT } from "./RecordDetail";
@@ -77,7 +75,7 @@ export function ReviewScreen({ workflow, ai }: { workflow: Workflow; ai: Analysi
           </h2>
           <p className="mt-1 text-dense text-muted">Inspect original values, resolve uncertainties, and record your decisions.</p>
         </div>
-        <AnalysisPanel ai={ai} availability={aiAvailability(loadedDatasets(state))} />
+        <AnalysisPanel ai={ai} />
       </div>
 
       <div className="flex flex-col gap-3">

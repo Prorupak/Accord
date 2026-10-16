@@ -6,18 +6,17 @@ import type { ModelRun } from "../domain/exportSnapshot";
 import { isStaleResult } from "../workflow/selectors";
 import type { RunRef, WorkflowAction, WorkflowState } from "../workflow/types";
 import { failure, SUGGEST_LIMITS, type AnalysisFailure, type InferenceMeta } from "./contract";
-import { apiUrl } from "./availability";
 import { debugLog } from "./debug";
 import { buildSuggestRequest } from "./request";
 import { readSuggestResponse, type HttpResult, type ReadResult } from "./response";
 
 export type Transport = (body: string, signal: AbortSignal) => Promise<HttpResult>;
 
-// Same-origin (next.config.ts rewrites /api/* to the FastAPI server) or the hosted gateway. No
-// client retries: the server owns the provider retry and repair budget.
+// Same-origin; next.config.ts rewrites /api/* to the FastAPI server. No client retries: the
+// server owns the provider retry and repair budget.
 export const fetchTransport: Transport = async (body, signal) => {
   const startedAt = performance.now();
-  const res = await fetch(apiUrl("/api/suggest"), { method: "POST", headers: { "content-type": "application/json" }, body, signal });
+  const res = await fetch("/api/suggest", { method: "POST", headers: { "content-type": "application/json" }, body, signal });
   const text = await res.text();
   debugLog("suggest response", res.status, `${Math.round(performance.now() - startedAt)}ms`, text);
   return { status: res.status, body: text };
