@@ -37,7 +37,7 @@ Use this project-scoped skill whenever working on the visual/UI layer of Accord.
 6. **Responsive design:** Verify desktop (1440px), tablet (1024px) and mobile (390px). Dense tables may scroll inside an explicitly bounded region, but page overflow and obscured controls are not acceptable.
 7. **Small diffs:** Reuse existing components and business logic. No duplicate hooks or state stores; do not change `web/src/domain/`, `web/src/workflow/`, `web/src/analysis/`, `api/`, `useExportArtifacts` or their contracts for visual styling alone.
 8. **Honest states:** Use real import, mapping, suggestion, uncertainty, failure, cancellation and export states. No fake badges, confidence percentages, model traces or invented sample results.
-9. **Don't broaden scope:** During Phase 04-I/01, implement foundations, not the new Import/Mapping/Review UI. Future tasks should change only the requested surface.
+9. **Don't broaden scope:** Foundations (04-I/01) and the application shell (04-I/02, see "Application shell" in `docs/ui-design-system.md`) are done; reuse the shell's header, navigation states, screen-owned `h1` and error banner rather than re-creating them. Each task changes only the requested surface.
 
 ## Routine for every UI task
 
