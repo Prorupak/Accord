@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { CanonicalField, DraftMapping } from "../domain/mapping";
 import type { Dataset, Side } from "../domain/types";
 import { failure, inferenceMetaSchema, type AnalysisFailure, type InferenceMeta } from "./contract";
+import { debugLog } from "./debug";
 import { readApiError } from "./response";
 import type { Transport } from "./runner";
 
@@ -60,8 +61,11 @@ export type MapSuggestion = {
 export type MapResult = { ok: true; value: MapSuggestion } | { ok: false; error: AnalysisFailure };
 
 export const fetchMapTransport: Transport = async (body, signal) => {
+  const startedAt = performance.now();
   const res = await fetch("/api/map", { method: "POST", headers: { "content-type": "application/json" }, body, signal });
-  return { status: res.status, body: await res.text() };
+  const text = await res.text();
+  debugLog("map response", res.status, `${Math.round(performance.now() - startedAt)}ms`, text);
+  return { status: res.status, body: text };
 };
 
 export async function requestMapSuggestion(
@@ -69,30 +73,37 @@ export async function requestMapSuggestion(
   opts: { requestId: string; generation: number; signal: AbortSignal; transport?: Transport },
 ): Promise<MapResult> {
   const request = buildMapRequest(datasets, opts.requestId, opts.generation);
-  const fail = (code: Parameters<typeof failure>[0]): MapResult => ({ ok: false, error: failure(code, opts.requestId, []) });
+  const fail = (code: Parameters<typeof failure>[0], reason: unknown): MapResult => {
+    debugLog("map rejected", opts.requestId, code, reason);
+    return { ok: false, error: failure(code, opts.requestId, []) };
+  };
   let http;
   try {
     http = await (opts.transport ?? fetchMapTransport)(JSON.stringify(request), opts.signal);
   } catch {
-    return fail(opts.signal.aborted ? "CANCELLED" : "NETWORK");
+    return fail(opts.signal.aborted ? "CANCELLED" : "NETWORK", "transport threw");
   }
   let json: unknown;
   try {
     json = JSON.parse(http.body);
   } catch {
-    return fail("MALFORMED_RESPONSE");
+    return fail("MALFORMED_RESPONSE", "body is not JSON");
   }
-  if (http.status !== 200) return { ok: false, error: readApiError(http.status, json, opts.requestId, []) };
+  if (http.status !== 200) {
+    const error = readApiError(http.status, json, opts.requestId, []);
+    debugLog("map error", opts.requestId, http.status, error.code, json);
+    return { ok: false, error };
+  }
 
   const parsed = mapResponseSchema.safeParse(json);
   if (!parsed.success || parsed.data.requestId !== request.requestId || parsed.data.generation !== request.generation)
-    return fail("CONTRACT_MISMATCH");
+    return fail("CONTRACT_MISMATCH", parsed.success ? "requestId/generation echo differs" : parsed.error.issues);
   const res = parsed.data;
   // The server verifies this too; the browser does not trust it blindly.
   for (const side of ["A", "B"] as const) {
     const known = new Set(datasets[side].columns.map((c) => c.id));
     const chosen = Object.values(res[side].mapping).filter((v): v is string => v !== null);
-    if (chosen.some((id) => !known.has(id)) || new Set(chosen).size !== chosen.length) return fail("MODEL_INVALID_OUTPUT");
+    if (chosen.some((id) => !known.has(id)) || new Set(chosen).size !== chosen.length) return fail("MODEL_INVALID_OUTPUT", `side ${side}: unknown or duplicate column`);
   }
   return {
     ok: true,
