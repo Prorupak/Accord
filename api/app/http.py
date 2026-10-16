@@ -52,7 +52,8 @@ def _invalid(message: str, request_id: str = "") -> ApiError:
 def _guard_origin(request: Request) -> None:
     s = get_settings()
     allowed_hosts = {f"127.0.0.1:{s.api_port}", f"localhost:{s.api_port}"}
-    if request.headers.get("host", "") not in allowed_hosts:
+    internal = {f"{s.api_internal_host}:{s.api_port}"} if s.api_internal_host else set()
+    if request.headers.get("host", "") not in allowed_hosts | internal:
         raise _invalid("Unexpected Host header.")
     origin = request.headers.get("origin")
     if origin is not None and origin not in {

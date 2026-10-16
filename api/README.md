@@ -88,7 +88,8 @@ What happens on a failure:
 - Output: `max_tokens` 2000.
 
 Requests must have `Content-Type: application/json`, a Host of `127.0.0.1:<port>` or
-`localhost:<port>`, and, if an `Origin` header is present, `FRONTEND_ORIGIN` as its value.
+`localhost:<port>` (plus `API_INTERNAL_HOST:<port>` when set, which Docker Compose does for the
+service name `api`), and, if an `Origin` header is present, `FRONTEND_ORIGIN` as its value.
 
 Errors use the spec §8.3 envelope `{"error":{code,message,retryable,requestId,retryAfterSeconds?}}`:
 
