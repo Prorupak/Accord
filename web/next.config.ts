@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   /* config options here */
   experimental: {
     agentFeedback: true,
+    // The dev proxy defaults to 30 s; the API's inference deadline is 45 s (spec §8.2).
+    proxyTimeout: 60_000,
   },
   cacheComponents: true,
   // Same-origin proxy to the FastAPI backend (api/); keeps the Python host out of UI code.
