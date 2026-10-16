@@ -53,12 +53,13 @@ def _guard_origin(request: Request) -> None:
     s = get_settings()
     allowed_hosts = {f"127.0.0.1:{s.api_port}", f"localhost:{s.api_port}"}
     internal = {f"{s.api_internal_host}:{s.api_port}"} if s.api_internal_host else set()
-    if request.headers.get("host", "") not in allowed_hosts | internal:
+    if request.headers.get("host", "") not in allowed_hosts | internal | s.vercel_hosts:
         raise _invalid("Unexpected Host header.")
     origin = request.headers.get("origin")
     if origin is not None and origin not in {
         s.frontend_origin,
         *(f"http://{h}" for h in allowed_hosts),
+        *(f"https://{h}" for h in s.vercel_hosts),
     }:
         raise ApiError("INVALID_INPUT", 403, "Origin not allowed.")
 

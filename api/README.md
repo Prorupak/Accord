@@ -89,7 +89,9 @@ What happens on a failure:
 
 Requests must have `Content-Type: application/json`, a Host of `127.0.0.1:<port>` or
 `localhost:<port>` (plus `API_INTERNAL_HOST:<port>` when set, which Docker Compose does for the
-service name `api`), and, if an `Origin` header is present, `FRONTEND_ORIGIN` as its value.
+service name `api`, and the Vercel deployment, branch and production hostnames when Vercel sets
+`VERCEL_URL`, `VERCEL_BRANCH_URL` and `VERCEL_PROJECT_PRODUCTION_URL`), and, if an `Origin` header is
+present, `FRONTEND_ORIGIN` (or `https://` plus one of those Vercel hostnames) as its value.
 
 Errors use the spec §8.3 envelope `{"error":{code,message,retryable,requestId,retryAfterSeconds?}}`:
 
