@@ -2,6 +2,62 @@
 
 Last updated: 2026-10-16
 
+## Cloudflare CF-02..CF-05 (2026-10-16): Mode A CI/CD; Python Worker gate failed
+
+Runbook: `docs/cloudflare-deploy.md`. **Result: the web is Mode A in both environments. Public
+AI is disabled.**
+
+- **CI/CD.** New job `deploy-web` in `ci.yml` deploys the static export to Pages `accord-web`
+  on a push to `develop` (preview) or `main` (production), after all four checks pass.
+  `playwright.static.config.ts` now takes `ACCORD_E2E_BASE_URL`, so the job reruns
+  `e2e/static.static.ts` against the live deployment. That suite passed against
+  `https://develop.accord-web-3so.pages.dev` from this machine. actionlint and zizmor are clean.
+  The job needs the GitHub environments and secrets listed in the runbook, which aren't created
+  yet.
+- **Python Worker (gate B).** `api/worker/entry.py` + `api/wrangler.jsonc` run the unchanged
+  FastAPI app through `workers.asgi`.
+  - Two compatibility fixes, both kept to `worker/entry.py`:
+    1. openai's import-time `os.urandom` is allowed once during the snapshot.
+    2. Worker vars/secrets are copied into `os.environ` for pydantic-settings.
+  - The bundle is 19.4 MiB. Deployed `accord-api-staging` has no public URL
+    (`workers.dev` → 404).
+  - Locally under workerd, the full mocked edge matrix behaved as on uvicorn (Host 400,
+    Origin 403, 415, malformed 400, >64 KiB 413, unknown path 404).
+  - **One real provider call** went through the openai SDK on workerd and passed strict-schema
+    verification: `nvidia/nemotron-3.5-super-vl:free`, 1 attempt, 5133 ms, 871 in / 634 out
+    tokens. This was the single authorized call. It happened by accident: plain `wrangler dev`
+    loads `api/.env`. `scripts/worker.sh` now disables that.
+  - **Measured CPU** on the deployed Free-plan Worker, through the gateway binding: `GET
+    /health` used 5, 6, 5, 6, 11, 13, 6 and 9 ms over 8 warm requests (wall ≈ CPU). The
+    limit is 10 ms. Inference routes add Pydantic request validation, schema generation,
+    response parsing and evidence verification on top, so they can't reliably fit.
+  - **The gate fails**, so per the hard stop there is no paid upgrade and no rewrite. The
+    validation path (`/api/map`, `/api/suggest`) was not measured on the deployed Worker,
+    because turning on the staging kill switch was blocked during this session.
+- **Gateway** (`gateway/`). TypeScript Worker that accepts only sample values, with a SQLite
+  Durable Object daily quota (3 units/call, no refunds, fail-closed) and the secret kill switch
+  `PUBLIC_AI_ENABLED` (absent = off). It reuses the API's error codes. 14 vitest-plugin tests
+  cover:
+  - 60 concurrent requests against room for 10 calls (exactly 10 forwarded, 50 → 429)
+  - UTC day buckets
+  - no refund on failure/replay
+  - tampered, injected and foreign values → 403 with no forward and no spend
+  - origin and preflight handling
+  - 413/415/400, storage failure → 502, kill switch → 503
+
+  `accord-gateway-staging` is deployed with AI off and `/health` reports `api: ok`. Mode B web
+  work (gateway transport, Mapping `aria-describedby` fix) was **not started**.
+- Not done: production Workers, Mode B CI deploy jobs, gateway CI job. `gh` can't see the
+  repo from this machine, so GitHub-side CI status is still unverified.
+
+| Check (2026-10-16, local macOS) | Result |
+| --- | --- |
+| `pnpm test` / `tsc` / `lint` / `build` | 379 passed / clean / clean / passes |
+| `pnpm e2e:static` local and against staging alias | 3 passed / 3 passed |
+| `uv run pytest -q`, ruff | 47 passed; clean |
+| `docker compose build/up --wait`, `scripts/docker-smoke.sh` | All smoke checks passed |
+| `gateway`: `vitest run`, `tsc`, `wrangler deploy --dry-run` both envs | 14 passed; clean; OK |
+
 ## Cloudflare D0 + CF-01 (2026-10-16): static-export build target (Mode A)
 
 **Mode A: local static build only.** Nothing is deployed. There is no Cloudflare account, Worker,
