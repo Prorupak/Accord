@@ -1,6 +1,6 @@
 "use client";
 
-import { aiAvailable } from "../analysis/availability";
+import type { AiAvailability } from "../analysis/availability";
 import type { AnalysisFailure } from "../analysis/contract";
 import type { TaskStatus } from "../domain/types";
 import type { Analysis } from "./AccordApp";
@@ -28,13 +28,13 @@ function retryGuidance(f: AnalysisFailure): string {
   return f.retryable ? "You can try again." : "Trying again is unlikely to help; review these records manually.";
 }
 
-export function AnalysisPanel({ ai }: { ai: Analysis }) {
+export function AnalysisPanel({ ai, availability }: { ai: Analysis; availability: AiAvailability }) {
   const { status, progress, failures, modelRuns } = ai;
   const last = modelRuns.at(-1);
   // Failures belong to the latest run; after a reset or new sources the status is idle again.
   const shownFailures = status === "idle" ? [] : failures;
 
-  if (!aiAvailable())
+  if (availability !== "available")
     return (
       <section aria-labelledby="ai-title" className="flex min-w-0 flex-1 flex-col gap-0.5 border-t pt-4 text-dense lg:border-t-0 lg:pt-0">
         <p className="flex items-center gap-2">
@@ -42,9 +42,12 @@ export function AnalysisPanel({ ai }: { ai: Analysis }) {
           <span id="ai-title" className="font-semibold">
             AI suggestions
           </span>
-          <span className="text-muted">Status: Unavailable in this hosted version</span>
+          <span className="text-muted">Status: {availability === "off" ? "Unavailable in this hosted version" : "Sample data only"}</span>
         </p>
-        <p className="text-muted">Nothing is sent to an AI provider. Exact matches and manual review still work.</p>
+        <p className="text-muted">
+          {availability === "off" ? "Nothing is sent to an AI provider." : "Your files are not sent anywhere. In this hosted version, AI suggestions run only on the sample data."}{" "}
+          Exact matches and manual review still work.
+        </p>
       </section>
     );
 

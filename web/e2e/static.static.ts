@@ -5,6 +5,9 @@ import { replayAudit } from "../src/domain/auditReplay";
 
 // Runs against `out/` on a plain static server (playwright.static.config.ts). Nothing is stubbed:
 // there is no API, so any /api request or failed asset load is a defect, not a test double.
+// ACCORD_API_BASE (set when the build under test had a gateway) expects the AI actions on the
+// sample instead; they are never clicked, so the zero-/api-calls check still holds.
+const hosted = !!process.env.ACCORD_API_BASE;
 const parse = (csv: string) => Papa.parse<Record<string, string>>(csv, { header: true, skipEmptyLines: true }).data;
 const count = (page: Page, label: string) => page.locator(`dt:text-is("${label}") + dd`);
 const row = (page: Page, text: string) => page.locator("#review-queue button").filter({ hasText: text });
@@ -30,8 +33,8 @@ async function sampleToReview(page: Page) {
   await page.getByRole("button", { name: "Or explore with sample data" }).click();
   await expect(page.getByText("Valid CSV")).toHaveCount(2);
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Suggest mappings with AI" })).toHaveCount(0);
-  await expect(page.getByText("AI mapping suggestions aren't available in this hosted version.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Suggest mappings with AI" })).toHaveCount(hosted ? 1 : 0);
+  if (!hosted) await expect(page.getByText("AI mapping suggestions aren't available in this hosted version.")).toBeVisible();
   for (const side of ["A", "B"]) {
     await page.locator(`#map-${side}-productId`).selectOption("c0");
     await page.locator(`#map-${side}-name`).selectOption("c1");
@@ -50,8 +53,8 @@ async function download(page: Page, name: string) {
 
 test("canonical manual workflow on the static build: no AI offered, three exports that replay", async ({ page }) => {
   await sampleToReview(page);
-  await expect(page.getByRole("button", { name: "Run AI suggestions" })).toHaveCount(0);
-  await expect(page.getByText("Status: Unavailable in this hosted version")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Run AI suggestions" })).toHaveCount(hosted ? 1 : 0);
+  if (!hosted) await expect(page.getByText("Status: Unavailable in this hosted version")).toBeVisible();
   await expect(row(page, "Ceramic mug white")).toContainText("Quantity differs");
 
   await row(page, "Organic cotton tote natural").click();

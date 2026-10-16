@@ -10,11 +10,11 @@ async function load(env: Record<string, string>) {
 afterEach(() => vi.unstubAllEnvs());
 
 it("default keeps the /api rewrite and server output", async () => {
-  const c = await load({ ACCORD_DEPLOY_TARGET: "", NEXT_OUTPUT_STANDALONE: "" });
+  const c = await load({ ACCORD_DEPLOY_TARGET: "", NEXT_OUTPUT_STANDALONE: "", ACCORD_API_BASE: "" });
   expect(c.output).toBeUndefined();
   expect(c.cacheComponents).toBe(true);
   expect(await c.rewrites!()).toEqual([{ source: "/api/:path*", destination: "http://127.0.0.1:8000/api/:path*" }]);
-  expect(c.env).toEqual({ ACCORD_DEPLOY_TARGET: "" });
+  expect(c.env).toEqual({ ACCORD_DEPLOY_TARGET: "", ACCORD_API_BASE: "" });
 });
 
 it("Docker keeps standalone output and the rewrite", async () => {
@@ -24,15 +24,24 @@ it("Docker keeps standalone output and the rewrite", async () => {
 });
 
 it("cloudflare-static exports with no rewrites and no PPR, and tells the client", async () => {
-  const c = await load({ ACCORD_DEPLOY_TARGET: "cloudflare-static", NEXT_OUTPUT_STANDALONE: "" });
+  const c = await load({ ACCORD_DEPLOY_TARGET: "cloudflare-static", NEXT_OUTPUT_STANDALONE: "", ACCORD_API_BASE: "" });
   expect(c.output).toBe("export");
   expect(c.rewrites).toBeUndefined();
   expect(c.cacheComponents).toBe(false);
   expect(c.partialPrefetching).toBe(false);
-  expect(c.env).toEqual({ ACCORD_DEPLOY_TARGET: "cloudflare-static" });
+  expect(c.env).toEqual({ ACCORD_DEPLOY_TARGET: "cloudflare-static", ACCORD_API_BASE: "" });
 });
 
 it("rejects an unknown target and a static+standalone conflict", async () => {
   await expect(load({ ACCORD_DEPLOY_TARGET: "cloudflare", NEXT_OUTPUT_STANDALONE: "" })).rejects.toThrow(/must be unset/);
   await expect(load({ ACCORD_DEPLOY_TARGET: "cloudflare-static", NEXT_OUTPUT_STANDALONE: "1" })).rejects.toThrow(/conflict/);
+});
+
+it("inlines a gateway origin only into a static build, and only an https origin", async () => {
+  const gateway = "https://accord-gateway-staging.example.workers.dev";
+  const c = await load({ ACCORD_DEPLOY_TARGET: "cloudflare-static", NEXT_OUTPUT_STANDALONE: "", ACCORD_API_BASE: gateway });
+  expect(c.env).toEqual({ ACCORD_DEPLOY_TARGET: "cloudflare-static", ACCORD_API_BASE: gateway });
+  for (const bad of ["http://gateway.test", "https://gateway.test/", "https://gateway.test/api"])
+    await expect(load({ ACCORD_DEPLOY_TARGET: "cloudflare-static", NEXT_OUTPUT_STANDALONE: "", ACCORD_API_BASE: bad })).rejects.toThrow(/ACCORD_API_BASE/);
+  await expect(load({ ACCORD_DEPLOY_TARGET: "", NEXT_OUTPUT_STANDALONE: "", ACCORD_API_BASE: gateway })).rejects.toThrow(/ACCORD_API_BASE/);
 });

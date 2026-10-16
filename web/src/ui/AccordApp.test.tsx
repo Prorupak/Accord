@@ -764,4 +764,36 @@ describe("static hosted build (ACCORD_DEPLOY_TARGET=cloudflare-static)", () => {
     expect(pageText()).toContain("Status: Unavailable in this hosted version");
     expect(calls).toEqual([]);
   });
+
+  describe("with a gateway (ACCORD_API_BASE)", () => {
+    const GATEWAY = "https://gateway.test";
+    beforeEach(() => vi.stubEnv("ACCORD_API_BASE", GATEWAY));
+
+    it("runs AI on the built-in sample, only against the gateway origin", async () => {
+      await click(button("Or explore with sample data"));
+      await click(button("Continue"));
+      expect(queryButton("Suggest mappings with AI")).not.toBeNull();
+      mapCanonical();
+      await click(button("Confirm mappings"));
+      const calls = stubFetch({ [`${GATEWAY}/api/suggest`]: (body) => ({ status: 200, body: canonicalSuggestResponse(body) }) });
+      await click(button("Run AI suggestions"));
+      expect(calls.length).toBeGreaterThan(0);
+      expect(calls.map((c) => c.url).every((u) => u === `${GATEWAY}/api/suggest`)).toBe(true);
+    });
+
+    it("keeps a user's own files in the browser: no AI action and no request", async () => {
+      const calls = stubFetch({});
+      chooseFiles("A", csvFile("mine.csv", `${SOURCE_A.trimEnd()}\nZZ-1,Extra item,1\n`));
+      chooseFiles("B", csvFile("source-b.csv", SOURCE_B));
+      await settle();
+      await click(button("Continue"));
+      expect(queryButton("Suggest mappings with AI")).toBeNull();
+      expect(pageText()).toContain("In this hosted version, AI mapping suggestions run only on the sample data.");
+      mapCanonical();
+      await click(button("Confirm mappings"));
+      expect(queryButton("Run AI suggestions")).toBeNull();
+      expect(pageText()).toContain("Status: Sample data only");
+      expect(calls).toEqual([]);
+    });
+  });
 });
