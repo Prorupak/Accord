@@ -64,7 +64,7 @@ function SourceCard({ side, workflow }: { side: Side; workflow: Workflow }) {
 
   return (
     <div
-      className={`flex flex-col gap-2 rounded border p-3 ${dragging ? "border-blue-600" : ""}`}
+      className={`flex flex-col gap-2 rounded border p-3 ${dragging ? "border-accent" : ""}`}
       onDragOver={(e) => {
         e.preventDefault();
         setDragging(true);
@@ -107,7 +107,7 @@ function SourceCard({ side, workflow }: { side: Side; workflow: Workflow }) {
         </dl>
       )}
       {error && (
-        <p role="alert" className="text-red-700">
+        <p role="alert" className="text-error">
           Could not import this file: {error.message}
           {error.recordIndex !== undefined && ` (data record ${error.recordIndex + 1}`}
           {error.recordIndex !== undefined && error.columnIndex !== undefined && `, column ${error.columnIndex + 1}`}
