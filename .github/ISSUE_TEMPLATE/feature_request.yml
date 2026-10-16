@@ -1,0 +1,37 @@
+name: Feature request
+description: Suggest a change or new capability.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Who is affected
+      description: Who runs into this and how often.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution and scope
+      description: The smallest change that would solve it. Note anything explicitly out of scope.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: boundary
+    attributes:
+      label: Decision boundary
+      description: Accord's model proposes and a person decides (see README).
+      options:
+        - label: This request keeps AI output as a proposal that needs explicit user approval, or explains why it should change.
+          required: true

@@ -1,5 +1,7 @@
 # Accord
 
+[![CI](https://github.com/Prorupak/Accord/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/Prorupak/Accord/actions/workflows/ci.yml)
+
 Accord compares two inventory or catalog CSV exports, proposes matches, and produces a
 traceable reconciliation package: `matches.csv`, `unresolved.csv` and `audit.json`.
 
@@ -25,6 +27,42 @@ pnpm dev                    # http://localhost:3000
 
 The web app proxies `/api/*` to `ACCORD_API_ORIGIN` (default `http://127.0.0.1:8000`). Without
 the API, or without a key, everything except the two AI buttons still works.
+
+You need no OpenRouter key or credits to develop, run the tests or use manual reconciliation.
+Without a key the AI buttons report `NOT_CONFIGURED`. Requirements: Node 24, pnpm 10, Python 3.13
+and [uv](https://docs.astral.sh/uv/).
+
+### With Docker
+
+```sh
+docker compose up -d --build   # http://localhost:3000; api/.env is optional
+scripts/docker-smoke.sh        # checks the running stack, never calls the AI provider
+docker compose down
+```
+
+See `docs/docker.md`.
+
+## Decision boundary
+
+The model proposes and a person decides. Nothing the model returns changes the reconciliation
+until someone accepts it.
+
+- **Deterministic matching.** Records pair automatically only by exact, unique product ID, under
+  the configured case mode. IDs are compared as text and never parsed as numbers. An ID that
+  appears more than once in either file quarantines every row carrying it, and those rows can't
+  be paired, automatically or by hand. Two different non-empty IDs are never paired. Quantities are parsed exactly
+  (blank means missing, never zero) and `B − A` is computed without floating point.
+- **AI output is a proposal.** A mapping draft changes nothing until you apply it. A suggested
+  pair counts only after an explicit `accept` decision. The API verifies every response against
+  its request (known row IDs, supplied candidates, exact evidence values). The browser checks it
+  again and drops stale or invalid proposals. A failed AI call never blocks manual work.
+- **Ownership.** The browser owns parsing, matching state, decisions and exports. The API only
+  runs two bounded inference calls. It stores nothing and cannot accept a match.
+- **Export invariants.** Before export, Accord checks that every pair references real rows
+  under the current configuration, that no row is used twice, that every non-automatic pair has
+  a matching decision, and that every row ends up in exactly one place
+  (`|A| = |P| + |UA|`, `|B| = |P| + |UB|`). The export is a frozen snapshot of that state. The
+  full rules are in `docs/domain-engine.md`.
 
 ## Use it
 
@@ -78,7 +116,7 @@ as the source files.
 ```sh
 cd web
 pnpm test                   # vitest: domain, workflow, orchestration, UI integration
-npx tsc --noEmit && pnpm lint && pnpm build
+pnpm exec next typegen && npx tsc --noEmit && pnpm lint && pnpm build
 pnpm exec playwright install chromium   # once
 pnpm e2e                    # Playwright against a production build on :3100
 
@@ -97,4 +135,15 @@ transport that could switch on outside tests.
   `UPSTREAM_ERROR` in the last smoke test (see `docs/progress.md`).
 - Fixed limits: 256 KiB and 200 records per file, 12 columns, 20 records per AI pass.
 - No persistence, accounts, saved workspaces, audit restore, or PDF/XLSX export.
-- The interface is deliberately plain. Visual design is planned for Phase 04.
+- No releases have been published yet. There is no hosted deployment.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md), [SUPPORT.md](SUPPORT.md) and the
+[Code of Conduct](CODE_OF_CONDUCT.md). Report vulnerabilities privately, as described in
+[SECURITY.md](SECURITY.md). Maintainer settings are in `docs/github-maintenance.md`. Changes are
+recorded in [CHANGELOG.md](CHANGELOG.md).
+
+## License
+
+[MIT](LICENSE).

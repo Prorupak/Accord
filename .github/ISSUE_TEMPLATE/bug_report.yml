@@ -1,0 +1,74 @@
+name: Bug report
+description: Something in Accord behaves incorrectly.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use synthetic data only. Never attach real inventory files, API keys or `.env` contents.
+        Report security vulnerabilities privately (see SECURITY.md), not here.
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps, starting from loading the two CSVs.
+      placeholder: |
+        1. Load source-a.csv and source-b.csv
+        2. Map Product name and Quantity
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: Include the exact error message or error code (for example `INVALID_INPUT`).
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Import / parsing
+        - Mapping
+        - Review / matching
+        - AI suggestions or mapping drafts
+        - Export
+        - API
+        - Docker
+        - CI / tooling
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: How you ran Accord (pnpm dev, Docker, production build), browser and OS, and the commit SHA.
+    validations:
+      required: true
+  - type: textarea
+    id: csv
+    attributes:
+      label: Minimal synthetic CSV
+      description: The smallest made-up CSV that reproduces the problem, if it depends on the data.
+      render: csv
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Remove cell values and anything secret before pasting.
+      render: text
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Confirmation
+      options:
+        - label: This report contains no real inventory data, API keys or other credentials.
+          required: true
