@@ -167,6 +167,14 @@ def test_overlong_explanation_is_schema_failure_with_repair(client, provider):
     assert len(provider.calls) == 2
 
 
+def test_truncated_output_fails_without_repair(client, provider):
+    provider.script = [completion("", finish_reason="length")]
+    r = post(client)
+    assert r.status_code == 502, r.text
+    assert r.json()["error"]["code"] == "MODEL_INVALID_OUTPUT"
+    assert len(provider.calls) == 1
+
+
 def test_request_bounds(client, provider):
     row = SUGGEST_REQUEST["rows"][1]
     too_many_candidates = json.loads(json.dumps(SUGGEST_REQUEST))

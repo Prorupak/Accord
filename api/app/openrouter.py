@@ -127,7 +127,12 @@ async def infer[M: BaseModel](
                         temperature=0,
                         response_format=response_format,
                         # Refuse providers that would silently ignore the JSON schema.
-                        extra_body={"provider": {"require_parameters": True}},
+                        # Reasoning off: its tokens count against max_tokens and can leave none
+                        # for the JSON.
+                        extra_body={
+                            "provider": {"require_parameters": True},
+                            "reasoning": {"enabled": False},
+                        },
                         timeout=max(1.0, deadline - loop.time()),
                     )
                 except _TRANSIENT as exc:
@@ -137,6 +142,10 @@ async def infer[M: BaseModel](
                         wait = 0.5 * 2 ** (attempts - 1) + random.uniform(0, 0.25)
                     if attempts >= MAX_PROVIDER_ATTEMPTS or wait >= remaining:
                         raise
+                    log.info(
+                        "retry route=%s request=%s attempt=%d wait=%.2fs error=%s",
+                        route, request_id, attempts, wait, type(exc).__name__,
+                    )  # fmt: skip
                     await asyncio.sleep(wait)
                     continue
 
@@ -144,21 +153,49 @@ async def infer[M: BaseModel](
                 if completion.usage is not None:
                     tokens_in = (tokens_in or 0) + (completion.usage.prompt_tokens or 0)
                     tokens_out = (tokens_out or 0) + (completion.usage.completion_tokens or 0)
-                content = completion.choices[0].message.content if completion.choices else None
+                choice = completion.choices[0] if completion.choices else None
+                content = choice.message.content if choice else None
+                log.info(
+                    "completion route=%s request=%s attempt=%d finish=%s chars=%d",
+                    route, request_id, attempts, getattr(choice, "finish_reason", None),
+                    len(content or ""),
+                )  # fmt: skip
+                if s.log_model_output:
+                    # Opt-in dev aid: this line contains cell values (spec §12.2 exception).
+                    log.info(
+                        "model output route=%s request=%s attempt=%d content=%s",
+                        route, request_id, attempts, content,
+                    )  # fmt: skip
+                if getattr(choice, "finish_reason", None) == "length":
+                    # A repair cannot fix a spent token budget, so fail without re-prompting.
+                    log.warning(
+                        "output truncated route=%s request=%s attempt=%d",
+                        route, request_id, attempts,
+                    )  # fmt: skip
+                    raise fail(
+                        "MODEL_INVALID_OUTPUT",
+                        502,
+                        "Model hit the output token limit before finishing its JSON.",
+                    )
 
                 try:
                     parsed = output_model.model_validate_json(content or "")
                 except ValidationError as exc:
-                    if repaired or attempts >= MAX_PROVIDER_ATTEMPTS:
+                    errors = "; ".join(
+                        f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors()[:10]
+                    )
+                    final = repaired or attempts >= MAX_PROVIDER_ATTEMPTS
+                    log.warning(
+                        "schema failure route=%s request=%s attempt=%d repair=%s errors=%s",
+                        route, request_id, attempts, not final, errors,
+                    )  # fmt: skip
+                    if final:
                         raise fail(
                             "MODEL_INVALID_OUTPUT",
                             502,
                             "Model returned output that does not match the schema.",
                         ) from None
                     repaired = True
-                    errors = "; ".join(
-                        f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors()[:10]
-                    )
                     messages = [
                         *base_messages,
                         {"role": "assistant", "content": content or ""},
@@ -173,7 +210,11 @@ async def infer[M: BaseModel](
                 try:
                     verify(parsed)
                 except ValueError as exc:
-                    # Wrong references are not repaired (spec §7.4).
+                    # Not repaired (spec §7.4). Messages name IDs, never cell values.
+                    log.warning(
+                        "verification failed route=%s request=%s attempt=%d reason=%s",
+                        route, request_id, attempts, exc,
+                    )  # fmt: skip
                     raise fail(
                         "MODEL_INVALID_OUTPUT", 502, f"Model output failed verification: {exc}"
                     ) from None
@@ -212,6 +253,7 @@ async def infer[M: BaseModel](
 
 def _status_error(exc: openai.APIStatusError, fail) -> ApiError:
     status = exc.status_code
+    log.warning("provider status error status=%d", status)
     if status in (401, 403):
         return fail("UPSTREAM_ERROR", 502, "AI provider rejected the configured credentials.")
     if status == 402:

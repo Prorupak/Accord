@@ -30,13 +30,15 @@ def client():
     return TestClient(app, base_url=BASE_URL)
 
 
-def completion(content, prompt_tokens=100, completion_tokens=50):
+def completion(content, prompt_tokens=100, completion_tokens=50, finish_reason="stop"):
     if not isinstance(content, str):
         content = json.dumps(content)
     return SimpleNamespace(
         model="test/free-model",
         usage=SimpleNamespace(prompt_tokens=prompt_tokens, completion_tokens=completion_tokens),
-        choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
+        choices=[
+            SimpleNamespace(message=SimpleNamespace(content=content), finish_reason=finish_reason)
+        ],
     )
 
 

@@ -62,7 +62,10 @@ def test_valid_mapping(client, provider):
     call = provider.calls[0]
     assert call["max_tokens"] == 2000
     assert call["response_format"]["json_schema"]["strict"] is True
-    assert call["extra_body"] == {"provider": {"require_parameters": True}}
+    assert call["extra_body"] == {
+        "provider": {"require_parameters": True},
+        "reasoning": {"enabled": False},
+    }
 
 
 @pytest.mark.parametrize(
