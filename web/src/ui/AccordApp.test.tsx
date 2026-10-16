@@ -295,7 +295,7 @@ describe("review and decisions", () => {
     const p03 = rowWith("Ceramic mug white");
     expect(p03.textContent).toContain("Matched by product ID");
     expect(p03.textContent).toContain("Quantity differs");
-    expect([...p03.cells].map((c) => c.textContent)[5]).toBe("-1");
+    expect(p03.textContent).toMatch(/-1$/);
   });
 
   it("accepts a suggestion and leaves the ambiguous travel cup unresolved with real evidence", async () => {
@@ -329,7 +329,7 @@ describe("review and decisions", () => {
 
   it("excludes and restores an exact-ID match", async () => {
     await details("Stainless steel flask");
-    await click(button("Exclude ID match"));
+    await click(button("Exclude exact match"));
     expect(count("Matched pairs")).toBe(1);
     expect(rowWith("Stainless steel flask").textContent).toContain("Unresolved: rejected");
     await click(button(/^Restore ID match with S\/S bottle/));
@@ -338,7 +338,7 @@ describe("review and decisions", () => {
 
   it("pairs manually from every eligible record, including zero-overlap ones, and undoes it", async () => {
     await details("Travel cup blue");
-    const picker = document.querySelector<HTMLInputElement>('input[type="search"]')!;
+    const picker = document.querySelector<HTMLInputElement>('input[id^="picker-"]')!;
     expect(pageText()).toContain("(3 eligible)");
     expect(queryButton(/^Pair with S\/S bottle/)).toBeNull();
     type(picker, "500");
@@ -370,10 +370,60 @@ describe("review and decisions", () => {
     expect(button("Continue to export").disabled).toBe(false);
   });
 
+  it("filters by derived state with counts and searches loaded names and IDs in memory", async () => {
+    const shown = () => [...document.querySelectorAll("#review-queue button")].length;
+    expect(button(/^All /).textContent).toBe("All 7");
+    expect(button(/^Needs review/).textContent).toBe("Needs review 0");
+    await runCanonicalAi();
+    expect(button(/^Needs review/).textContent).toBe("Needs review 1");
+    await click(button(/^Needs review/));
+    expect(shown()).toBe(1);
+    await click(button(/^All /));
+    type(document.getElementById("review-search") as HTMLInputElement, "tumbler");
+    expect(shown()).toBe(2);
+    type(document.getElementById("review-search") as HTMLInputElement, "p03");
+    expect(rowWith("Ceramic mug white")).toBeTruthy();
+    expect(shown()).toBe(1);
+  });
+
+  it("selects a useful record before and after AI, and keeps the selection through a decision", async () => {
+    const title = () => document.getElementById("detail-title")!.textContent;
+    expect(rowWith("Stainless steel flask").getAttribute("aria-pressed")).toBe("true");
+    expect(title()).toBe("Matched by product ID");
+    await runCanonicalAi();
+    expect(rowWith("Organic cotton tote natural").getAttribute("aria-pressed")).toBe("true");
+    expect(title()).toBe("Suggested interpretation");
+    await click(button("Accept pair"));
+    expect(rowWith("Organic cotton tote natural").getAttribute("aria-pressed")).toBe("true");
+    expect(title()).toBe("Pair approved by you");
+    expect(document.activeElement?.id).toBe("detail-title");
+  });
+
+  it("shows no quantity delta for a pending suggestion, only for the accepted pair", async () => {
+    await runCanonicalAi();
+    expect(rowWith("Organic cotton tote natural").textContent).toMatch(/· suggested—$/);
+    expect(pageText()).toContain("Not compared yet");
+    await click(button("Accept pair"));
+    expect(rowWith("Organic cotton tote natural").textContent).toMatch(/0$/);
+  });
+
+  it("shows an unresolved Source B record without inventing a Source A candidate", async () => {
+    await details("Travel tumbler blue 350ml");
+    expect(pageText()).toContain("Not paired with a Source A record.");
+    expect(pageText()).toContain("open the Source A record it belongs to");
+    expect(queryButton("Accept pair")).toBeNull();
+    expect(queryButton(/^Pair with/)).toBeNull();
+  });
+
+  it("discloses that quantities are not sent to the AI provider", () => {
+    expect(document.getElementById("ai-disclosure")!.textContent).toContain("Quantities are not sent.");
+    expect(button("Run AI suggestions").getAttribute("aria-describedby")).toBe("ai-disclosure");
+  });
+
   it("surfaces a rejected decision as a typed alert without changing state", async () => {
     await details("Ceramic mug white");
     // Two clicks before React re-renders: the second targets a pair that no longer exists.
-    const exclude = button("Exclude ID match");
+    const exclude = button("Exclude exact match");
     act(() => {
       exclude.click();
       exclude.click();
@@ -392,12 +442,15 @@ describe("conflicting and duplicate identifiers", () => {
     await click(button("Continue"));
     mapCanonical();
     await click(button("Confirm mappings"));
-    await click(button("Identifier conflicts"));
-    expect(rowWith("Blue mug [D1]").textContent).toContain("Identifier conflict: duplicate ID");
-    await details("Blue mug [D1]");
+    await click(button(/^Identifier conflicts/));
+    expect(rowWith("Blue mug").textContent).toContain("Identifier conflict: duplicate ID");
+    await details("Blue mug");
     expect(pageText()).toContain("No Source B record can be paired with this record.");
-    await click(button("All"));
-    await details("Red mug [X1]");
+    expect(pageText()).toContain("Accord does not pair around an identifier conflict.");
+    expect(document.getElementById("detail-title")!.textContent).toBe("Identifier conflict");
+    expect(queryButton("Accept pair")).toBeNull();
+    await click(button(/^All /));
+    await details("Red mug");
     expect(queryButton(/^Pair with Red mug \[Y9\]/)).toBeNull();
     expect(queryButton(/^Pair with Blue mug/)).toBeNull();
     expect(queryButton(/^Pair with Green mug/)).not.toBeNull();

@@ -2,6 +2,45 @@
 
 Last updated: 2026-10-16
 
+## Phase 04-II (2026-10-16): Review workspace
+
+Done. Review follows `docs/accord-review-design-handoff/` (see "Review" in `docs/ui-design-system.md`).
+It has a flat summary strip, AI controls beside the workspace heading, and a queue + inspector workspace
+(3fr/2fr from 1280px, `Records` / `Details` panes below). There are no per-row `Details` buttons. The domain,
+workflow, analysis, API and export code are unchanged. Every action still goes through `workflow.decide`.
+
+- Width: Review keeps the shared `max-w-content` column so the shell does not change width between stages (the brief allowed a wider Review; dropped after review feedback).
+- `reviewRows.ts`: new `filterCount`, `counterpart`, `matchesQuery` (in-memory name/ID search) and
+  `statusTone`. `ReviewScreen.tsx`, `RecordDetail.tsx` and `AnalysisPanel.tsx` are restyled. Selection
+  state stays local to the screen.
+- Copy: `Exclude ID match` → `Exclude exact match`. The AI disclosure now says that names and product IDs
+  are sent and quantities are not (that matches `domain/aiContext.ts`).
+- Found while testing: a default (unpinned) selection jumped to the first record after `Accept pair`.
+  Decisions now pin the shown record.
+- Tests: 6 new UI tests (filter counts and search, default and stable selection, no delta on a pending
+  row, a B-only record with no invented A, the disclosure) plus conflict assertions and a
+  `reviewRows` unit test. Two new Playwright tests: an identifier conflict blocked through export, and
+  the layout at 1440 / 1024 / 390 (pane switching, focus, no horizontal overflow, queue inside the
+  first 900px). Existing specs click rows instead of `Details`.
+
+Results: `pnpm test` 372/372. `tsc`, lint and build are clean. Playwright 9/9. Production screenshots at 1440,
+1024 and 390, before and after a stubbed AI run (test double, no provider call), were compared with
+the prototype. There is no horizontal overflow, and the queue starts at about 555px at 1440×900.
+
+Deviations from the prototype:
+- Not ported: `Load sample AI results`, demo data and arithmetic, the "pcs" unit, the toast, the demo tag,
+  `Selection is local` and the "Built-in safeguards" demo line.
+- The manual picker is the existing search + `Pair with …` list, not a `<select>`. There is no `Reconsider`
+  for deferred rows because the reducer has no un-defer.
+- Status labels stay the app's own (`Approved suggestion`, `Manual match`, `Unresolved: …`) and the filter
+  stays `Identifier conflicts`. The pane switch is an `aria-pressed` button group, not ARIA tabs, because
+  both panes are visible from 1280px.
+- The split starts at 1280px (Tailwind `xl`), not the prototype's 1120px.
+
+Open:
+- Not checked: 200% zoom, reduced motion in a browser (the global rule applies), a screen-reader pass, and
+  a live `/api/suggest` run (it costs quota).
+
 ## Phase 04-I / Step 04 (2026-10-16): Mapping screen
 
 Done. Mapping matches `docs/accord-mapping-prototype.html` (see "Mapping" in `docs/ui-design-system.md`).
