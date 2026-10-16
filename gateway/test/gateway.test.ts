@@ -1,5 +1,5 @@
 import { env } from "cloudflare:test";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import worker, { type Env } from "../src/index";
 import sample from "../src/sample.json";
 
@@ -35,7 +35,7 @@ const suggestBody = () => ({
   ],
 });
 
-type Api = { calls: Request[]; fetch: (r: RequestInfo, init?: RequestInit) => Promise<Response> };
+type Api = { calls: Request[]; fetch: typeof fetch };
 function fakeApi(respond: (r: Request) => Response | Promise<Response> = () => Response.json({ ok: true })): Api {
   const api: Api = {
     calls: [],
@@ -56,22 +56,32 @@ function call(path: string, init: RequestInit & { json?: unknown } = {}, over: P
     headers,
     body: init.json !== undefined ? JSON.stringify(init.json) : init.body,
   });
-  const e = { ...env, ...over, API: api as unknown as Fetcher } as Env;
-  return { res: worker.fetch(req, e), api };
+  vi.spyOn(globalThis, "fetch").mockImplementation(api.fetch);
+  return { res: worker.fetch(req, { ...env, ...over } as Env), api };
 }
 
+afterEach(() => void vi.restoreAllMocks());
+
 describe("routing and CORS", () => {
-  it("health reports the private API through the binding", async () => {
+  it("health reports whether the hosted API answers", async () => {
     const { res, api } = call("/health");
     const body = await (await res).json<{ api: string }>();
     expect(body.api).toBe("ok");
-    expect(new URL(api.calls[0].url).host).toBe("accord-api:8000");
+    expect(api.calls[0].url).toBe("https://api.test/health");
   });
 
   it("capabilities follow the kill switch and reveal nothing else", async () => {
     expect(await (await call("/api/capabilities").res).json()).toEqual({ enabled: true, sampleOnly: true, maxBodyBytes: 65536 });
     const off = await (await call("/api/capabilities", {}, { PUBLIC_AI_ENABLED: undefined }).res).json<{ enabled: boolean }>();
     expect(off.enabled).toBe(false);
+  });
+
+  it("without the API token, AI is off and nothing is forwarded", async () => {
+    const off = await (await call("/api/capabilities", {}, { API_TOKEN: undefined }).res).json<{ enabled: boolean }>();
+    expect(off.enabled).toBe(false);
+    const { res, api } = call("/api/suggest", { json: suggestBody() }, { API_TOKEN: undefined });
+    expect((await res).status).toBe(503);
+    expect(api.calls).toHaveLength(0);
   });
 
   it("blocks unknown paths and methods", async () => {
@@ -166,13 +176,14 @@ describe("guards before any model call", () => {
 });
 
 describe("forwarding and quota", () => {
-  it("forwards the sample unchanged to the private API with no-store", async () => {
+  it("forwards the sample unchanged, with the token and no-store", async () => {
     for (const [path, body] of [["/api/map", mapBody()], ["/api/suggest", suggestBody()]] as const) {
       const { res, api } = call(path, { json: body, headers: { origin: STAGING, cookie: "x=1" } });
       const r = await res;
       expect(r.status).toBe(200);
       expect(r.headers.get("cache-control")).toBe("no-store");
-      expect(api.calls[0].url).toBe(`http://accord-api:8000${path}`);
+      expect(api.calls[0].url).toBe(`https://api.test${path}`);
+      expect(api.calls[0].headers.get("x-accord-gateway-token")).toBe("test-token");
       expect(api.calls[0].headers.get("origin")).toBeNull();
       expect(api.calls[0].headers.get("cookie")).toBeNull();
       expect(await api.calls[0].json()).toEqual(body);

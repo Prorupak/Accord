@@ -1,5 +1,5 @@
-// Public gateway: the only public way to reach Accord inference. It forwards to the private
-// Python Worker (service binding API) only for the built-in synthetic sample, and only while a
+// Public gateway: the only public way to reach Accord inference. It forwards to the hosted API
+// (API_ORIGIN, authenticated by API_TOKEN) only for the built-in synthetic sample, and only while a
 // global daily quota (Durable Object) has room. Error bodies use the API's §8.3 envelope and codes.
 import { isSampleMap, isSampleSuggest } from "./sample";
 import type { Quota } from "./quota";
@@ -7,7 +7,8 @@ import type { Quota } from "./quota";
 export { Quota } from "./quota";
 
 export interface Env {
-  API: Fetcher;
+  API_ORIGIN: string; // hosted FastAPI origin, e.g. https://accord-api-staging.onrender.com
+  API_TOKEN?: string; // secret; the API's GATEWAY_TOKEN. Inference is off without it
   QUOTA: DurableObjectNamespace<Quota>;
   ENVIRONMENT: string;
   DAILY_UNITS: string; // provider attempts allowed per UTC day, across all clients
@@ -18,7 +19,6 @@ export interface Env {
 
 const MAX_BODY_BYTES = 64 * 1024; // api/app/schemas.py MAX_BODY_BYTES
 const UNITS_PER_CALL = 3; // api/app/schemas.py MAX_PROVIDER_ATTEMPTS: reserve the worst case up front
-const API_ORIGIN = "http://accord-api:8000"; // Host the Python Worker's guard accepts (API_INTERNAL_HOST:API_PORT)
 const AI_ROUTES: Record<string, (body: unknown) => boolean> = { "/api/map": isSampleMap, "/api/suggest": isSampleSuggest };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -45,14 +45,14 @@ export default {
     if (origin !== null && !allowed.includes(origin)) return fail(403, "INVALID_INPUT", "Origin not allowed.");
 
     if (request.method === "GET" && pathname === "/health") {
-      // Also proves the service binding reaches the private Worker.
-      const api = await env.API.fetch(`${API_ORIGIN}/health`).then((r) => (r.ok ? "ok" : `status ${r.status}`), () => "unreachable");
+      // Also proves the gateway reaches the API (and wakes a Render free instance).
+      const api = await fetch(`${env.API_ORIGIN}/health`, { redirect: "manual" }).then((r) => (r.ok ? "ok" : `status ${r.status}`), () => "unreachable");
       log(200, null, { api });
       return json(200, { status: "ok", service: "accord-gateway", environment: env.ENVIRONMENT, version: env.GIT_SHA ?? null, api });
     }
     if (request.method === "GET" && pathname === "/api/capabilities") {
       log(200, null);
-      return json(200, { enabled: env.PUBLIC_AI_ENABLED === "true", sampleOnly: true, maxBodyBytes: MAX_BODY_BYTES });
+      return json(200, { enabled: env.PUBLIC_AI_ENABLED === "true" && !!env.API_TOKEN, sampleOnly: true, maxBodyBytes: MAX_BODY_BYTES });
     }
 
     const sampleOnly = AI_ROUTES[pathname];
@@ -64,7 +64,7 @@ export default {
       });
     }
     if (request.method !== "POST") return fail(405, "INVALID_INPUT", "Method not allowed.", "", { allow: "POST, OPTIONS" });
-    if (env.PUBLIC_AI_ENABLED !== "true") return fail(503, "NOT_CONFIGURED", "AI suggestions are switched off on this deployment.");
+    if (env.PUBLIC_AI_ENABLED !== "true" || !env.API_TOKEN) return fail(503, "NOT_CONFIGURED", "AI suggestions are switched off on this deployment.");
     if ((request.headers.get("content-type") ?? "").split(";")[0].trim() !== "application/json")
       return fail(415, "INVALID_INPUT", "Content-Type must be application/json.");
 
@@ -98,7 +98,12 @@ export default {
 
     let upstream: Response;
     try {
-      upstream = await env.API.fetch(`${API_ORIGIN}${pathname}`, { method: "POST", headers: { "content-type": "application/json" }, body: raw });
+      upstream = await fetch(`${env.API_ORIGIN}${pathname}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-accord-gateway-token": env.API_TOKEN },
+        body: raw,
+        redirect: "manual", // never replay the token to another host
+      });
     } catch {
       return fail(502, "UPSTREAM_ERROR", "The inference service is unreachable.", requestId);
     }

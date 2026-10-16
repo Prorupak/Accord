@@ -13,8 +13,9 @@ export default defineConfig({
           DAILY_UNITS: "1000000",
           ALLOWED_ORIGINS: "https://develop.accord-web-3so.pages.dev,https://accord-web-3so.pages.dev",
           PUBLIC_AI_ENABLED: "true",
+          API_ORIGIN: "https://api.test",
+          API_TOKEN: "test-token",
         },
-        // No API binding: tests pass their own stand-in for the private Python Worker in env.
       },
     }),
   ],
