@@ -1,0 +1,112 @@
+{
+  "A": {
+    "datasetId": "8dbb636ca54bdbf76c9d2ad92fcfba0c49c348af11b453d0f1ad19f42adcb5c8",
+    "columns": [
+      {
+        "id": "c0",
+        "header": "sku"
+      },
+      {
+        "id": "c1",
+        "header": "item"
+      },
+      {
+        "id": "c2",
+        "header": "qty"
+      }
+    ],
+    "rows": [
+      {
+        "id": "A:8dbb636ca54bdbf76c9d2ad92fcfba0c49c348af11b453d0f1ad19f42adcb5c8:0",
+        "cells": [
+          "P01",
+          "Stainless steel flask 750ml",
+          "12"
+        ]
+      },
+      {
+        "id": "A:8dbb636ca54bdbf76c9d2ad92fcfba0c49c348af11b453d0f1ad19f42adcb5c8:1",
+        "cells": [
+          "",
+          "Organic cotton tote natural",
+          "8"
+        ]
+      },
+      {
+        "id": "A:8dbb636ca54bdbf76c9d2ad92fcfba0c49c348af11b453d0f1ad19f42adcb5c8:2",
+        "cells": [
+          "P03",
+          "Ceramic mug white",
+          "6"
+        ]
+      },
+      {
+        "id": "A:8dbb636ca54bdbf76c9d2ad92fcfba0c49c348af11b453d0f1ad19f42adcb5c8:3",
+        "cells": [
+          "",
+          "Travel cup blue",
+          "4"
+        ]
+      }
+    ]
+  },
+  "B": {
+    "datasetId": "b4ce8ee01b3273c97e8deb7640ce06cfc5181c3cf046aac7f8409ee03cccef58",
+    "columns": [
+      {
+        "id": "c0",
+        "header": "product_code"
+      },
+      {
+        "id": "c1",
+        "header": "description"
+      },
+      {
+        "id": "c2",
+        "header": "stock"
+      }
+    ],
+    "rows": [
+      {
+        "id": "B:b4ce8ee01b3273c97e8deb7640ce06cfc5181c3cf046aac7f8409ee03cccef58:0",
+        "cells": [
+          "P01",
+          "S/S bottle 750 ml",
+          "12"
+        ]
+      },
+      {
+        "id": "B:b4ce8ee01b3273c97e8deb7640ce06cfc5181c3cf046aac7f8409ee03cccef58:1",
+        "cells": [
+          "",
+          "Natural cotton shopping bag",
+          "8"
+        ]
+      },
+      {
+        "id": "B:b4ce8ee01b3273c97e8deb7640ce06cfc5181c3cf046aac7f8409ee03cccef58:2",
+        "cells": [
+          "P03",
+          "White ceramic mug",
+          "5"
+        ]
+      },
+      {
+        "id": "B:b4ce8ee01b3273c97e8deb7640ce06cfc5181c3cf046aac7f8409ee03cccef58:3",
+        "cells": [
+          "",
+          "Travel tumbler blue 350ml",
+          "4"
+        ]
+      },
+      {
+        "id": "B:b4ce8ee01b3273c97e8deb7640ce06cfc5181c3cf046aac7f8409ee03cccef58:4",
+        "cells": [
+          "",
+          "Travel tumbler blue 500ml",
+          "4"
+        ]
+      }
+    ]
+  }
+}

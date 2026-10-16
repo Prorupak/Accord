@@ -1,0 +1,38 @@
+// Public gateway Worker (docs/cloudflare-deploy.md). Bindings and vars are not inherited by
+// environments, so each environment repeats them with its own Python Worker and quota storage.
+// PUBLIC_AI_ENABLED is a secret, absent by default (AI off): `wrangler secret put PUBLIC_AI_ENABLED --env <env>`.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "accord-gateway",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Quota"] }],
+  "env": {
+    "staging": {
+      "name": "accord-gateway-staging",
+      "workers_dev": true,
+      "preview_urls": false,
+      "services": [{ "binding": "API", "service": "accord-api-staging" }],
+      "durable_objects": { "bindings": [{ "name": "QUOTA", "class_name": "Quota" }] },
+      "vars": {
+        "ENVIRONMENT": "staging",
+        // 3 units per call (max provider attempts): 30 units = 10 calls per UTC day.
+        "DAILY_UNITS": "30",
+        "ALLOWED_ORIGINS": "https://develop.accord-web-3so.pages.dev"
+      }
+    },
+    "production": {
+      "name": "accord-gateway-production",
+      "workers_dev": true,
+      "preview_urls": false,
+      "services": [{ "binding": "API", "service": "accord-api-production" }],
+      "durable_objects": { "bindings": [{ "name": "QUOTA", "class_name": "Quota" }] },
+      "vars": {
+        "ENVIRONMENT": "production",
+        "DAILY_UNITS": "30",
+        "ALLOWED_ORIGINS": "https://accord-web-3so.pages.dev"
+      }
+    }
+  }
+}

@@ -17,6 +17,7 @@ The **API** only performs two bounded inference calls and never stores data or a
 
 - `api/`: FastAPI backend (Python 3.13, uv). See `api/README.md` for endpoints, limits and error codes.
 - `web/`: Next.js 16 / React 19 / Tailwind 4 frontend. Working workflow UI in `web/src/ui/`.
+- `gateway/`: Cloudflare Worker for sample-only public AI, with a quota Durable Object (`pnpm test`). Deploys and Mode A/B status: `docs/cloudflare-deploy.md`.
 - `fixtures/`: test CSV data.
 
 ## Commands

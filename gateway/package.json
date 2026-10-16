@@ -1,0 +1,18 @@
+{
+  "name": "accord-gateway",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "check": "wrangler deploy --dry-run --env staging --outdir dist && wrangler deploy --dry-run --env production --outdir dist"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.3.6",
+    "@cloudflare/workers-types": "5.20261016.1",
+    "typescript": "6.0.3",
+    "vitest": "4.1.12",
+    "wrangler": "4.151.1"
+  }
+}
