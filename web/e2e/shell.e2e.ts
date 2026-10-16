@@ -8,9 +8,9 @@ const stages = (page: Page) => page.getByRole("navigation", { name: "Workflow" }
 const noHorizontalScroll = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
 
 async function toReview(page: Page) {
-  await page.getByRole("button", { name: "Try sample data" }).click();
+  await page.getByRole("button", { name: "Or explore with sample data" }).click();
   await expect(page.getByText("Valid CSV")).toHaveCount(2);
-  await page.getByRole("button", { name: "Continue to mapping" }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   for (const side of ["A", "B"]) {
     await page.locator(`#map-${side}-productId`).selectOption("c0");
     await page.locator(`#map-${side}-name`).selectOption("c1");
@@ -36,7 +36,7 @@ test("at 390px every stage stays visible and the page never scrolls sideways", a
 
 test("stages are reachable and operable from the keyboard", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Try sample data" }).click();
+  await page.getByRole("button", { name: "Or explore with sample data" }).click();
   await expect(page.getByText("Valid CSV")).toHaveCount(2);
   await page.getByRole("button", { name: "01 Import" }).focus();
   await page.keyboard.press("Tab");

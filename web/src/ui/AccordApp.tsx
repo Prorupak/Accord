@@ -17,10 +17,17 @@ export type SampleFile = { readonly name: string; readonly text: string };
 export type Workflow = ReturnType<typeof useAccordWorkflow>;
 export type Analysis = ReturnType<typeof useSuggestAnalysis>;
 
-const STAGES: ReadonlyArray<{ id: Stage; label: string; title: string; lead: (state: WorkflowState) => string }> = [
+const STAGES: ReadonlyArray<{
+  id: Stage;
+  label: string;
+  eyebrow?: string;
+  title: string;
+  lead: (state: WorkflowState) => string;
+}> = [
   {
     id: "import",
     label: "Import",
+    eyebrow: "Start a comparison",
     title: "Bring two exports into agreement.",
     lead: () => "Compare product records, review uncertain matches, and export a traceable result.",
   },
@@ -139,16 +146,6 @@ export function AccordApp({ samples }: { samples: Samples }) {
           </ol>
         </nav>
 
-        <div>
-          <p className="text-label uppercase tracking-wide text-muted">
-            {step(at)} / {intro.label}
-          </p>
-          <h1 id="stage-title" className="mt-2 text-page">
-            {intro.title}
-          </h1>
-          <p className="mt-2 text-muted">{intro.lead(state)}</p>
-        </div>
-
         {alert && (
           <div role="alert" className="flex flex-wrap items-start justify-between gap-3 rounded-panel border border-error bg-error-soft p-4">
             <div>
@@ -161,12 +158,29 @@ export function AccordApp({ samples }: { samples: Samples }) {
           </div>
         )}
 
-        <main aria-labelledby="stage-title">
-          {state.stage === "import" && <ImportScreen workflow={workflow} samples={samples} />}
-          {state.stage === "mapping" && <MappingScreen workflow={workflow} />}
-          {state.stage === "review" && <ReviewScreen workflow={workflow} ai={ai} />}
-          {state.stage === "export" && <ExportScreen workflow={workflow} ai={ai} />}
-        </main>
+        {/* Import is the one framed stage: intro and dropzones share a card. */}
+        <div
+          className={
+            state.stage === "import" ? "flex flex-col gap-6 rounded-panel border bg-surface p-panel" : "flex flex-col gap-8"
+          }
+        >
+          <div>
+            <p className="text-label uppercase tracking-wide text-muted">
+              {step(at)} / {intro.eyebrow ?? intro.label}
+            </p>
+            <h1 id="stage-title" className="mt-2 text-page">
+              {intro.title}
+            </h1>
+            <p className="mt-2 text-muted">{intro.lead(state)}</p>
+          </div>
+
+          <main aria-labelledby="stage-title">
+            {state.stage === "import" && <ImportScreen workflow={workflow} samples={samples} />}
+            {state.stage === "mapping" && <MappingScreen workflow={workflow} />}
+            {state.stage === "review" && <ReviewScreen workflow={workflow} ai={ai} />}
+            {state.stage === "export" && <ExportScreen workflow={workflow} ai={ai} />}
+          </main>
+        </div>
       </div>
     </>
   );

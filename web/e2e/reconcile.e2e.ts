@@ -16,9 +16,9 @@ test.beforeEach(async ({ page }) => {
 async function sampleToReview(page: Page) {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Bring two exports into agreement." })).toBeVisible();
-  await page.getByRole("button", { name: "Try sample data" }).click();
+  await page.getByRole("button", { name: "Or explore with sample data" }).click();
   await expect(page.getByText("Valid CSV")).toHaveCount(2);
-  await page.getByRole("button", { name: "Continue to mapping" }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   for (const side of ["A", "B"]) {
     await page.locator(`#map-${side}-productId`).selectOption("c0");
     await page.locator(`#map-${side}-name`).selectOption("c1");
@@ -114,7 +114,7 @@ test("every stage fits a 390px phone without horizontal page scrolling", async (
   await page.setViewportSize({ width: 390, height: 844 });
   const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   await page.goto("/");
-  await page.getByRole("button", { name: "Try sample data" }).click();
+  await page.getByRole("button", { name: "Or explore with sample data" }).click();
   await expect(page.getByText("Valid CSV")).toHaveCount(2);
   expect(await overflow()).toBe(0);
   await sampleToReview(page);

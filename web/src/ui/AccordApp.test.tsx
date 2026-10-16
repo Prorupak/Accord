@@ -59,8 +59,8 @@ function mapCanonical(sharedUnit = true) {
 }
 
 async function toReview() {
-  await click(button("Try sample data"));
-  await click(button("Continue to mapping"));
+  await click(button("Or explore with sample data"));
+  await click(button("Continue"));
   mapCanonical();
   await click(button("Confirm mappings"));
 }
@@ -75,13 +75,13 @@ async function runCanonicalAi() {
 
 describe("import", () => {
   it("loads the sample through the normal import path and shows file facts", async () => {
-    expect(pageText()).toContain("Choose two CSV exports, or explore the sample.");
+    expect(pageText()).toContain("Choose or drop a CSV");
     expect(button("02 Mapping").disabled).toBe(true);
-    await click(button("Try sample data"));
+    await click(button("Or explore with sample data"));
     expect(pageText()).toContain("source-a.csv");
     expect(pageText()).toContain(`${new TextEncoder().encode(SOURCE_B).length} bytes`);
-    expect(pageText()).toMatch(/Records4Columns3/);
-    expect(pageText()).toMatch(/Records5Columns3/);
+    expect(pageText()).toMatch(/4 records · 3 columns/);
+    expect(pageText()).toMatch(/5 records · 3 columns/);
     expect(button("02 Mapping").disabled).toBe(false);
   });
 
@@ -90,7 +90,7 @@ describe("import", () => {
     chooseFiles("B", csvFile("same.csv", SOURCE_A));
     await settle();
     expect(pageText().match(/Valid CSV/g)).toHaveLength(2);
-    await click(button("Continue to mapping"));
+    await click(button("Continue"));
     mapCanonical();
     await click(button("Confirm mappings"));
     expect(stage()).toBe("03 Review");
@@ -135,8 +135,8 @@ describe("import", () => {
 
 describe("mapping", () => {
   beforeEach(async () => {
-    await click(button("Try sample data"));
-    await click(button("Continue to mapping"));
+    await click(button("Or explore with sample data"));
+    await click(button("Continue"));
   });
 
   it("requires name and quantity, and disables a column already used on that side", () => {
@@ -322,7 +322,7 @@ describe("conflicting and duplicate identifiers", () => {
     chooseFiles("A", csvFile("a.csv", "sku,item,qty\nD1,Blue mug,1\nX1,Red mug,2\n,Green mug,3\n"));
     chooseFiles("B", csvFile("b.csv", "code,desc,stock\nD1,Blue mug,1\nD1,Blue mug copy,1\nY9,Red mug,2\n,Green mug,3\n"));
     await settle();
-    await click(button("Continue to mapping"));
+    await click(button("Continue"));
     mapCanonical();
     await click(button("Confirm mappings"));
     await click(button("Identifier conflicts"));
@@ -378,7 +378,7 @@ describe("partial analysis", () => {
     chooseFiles("A", csvFile("a.csv", a));
     chooseFiles("B", csvFile("b.csv", b));
     await settle();
-    await click(button("Continue to mapping"));
+    await click(button("Continue"));
     mapCanonical();
     await click(button("Confirm mappings"));
     let n = 0;
@@ -451,7 +451,7 @@ describe("export", () => {
     chooseFiles("A", csvFile("a.csv", "sku,item,qty\nP1,=HYPERLINK(1),1\n"));
     chooseFiles("B", csvFile("b.csv", "code,desc,stock\nP1,Mug,1\n"));
     await settle();
-    await click(button("Continue to mapping"));
+    await click(button("Continue"));
     mapCanonical();
     await click(button("Confirm mappings"));
     await click(button("Continue to export"));
@@ -492,10 +492,10 @@ describe("shell", () => {
   });
 
   it("marks exactly one current step and only the stages state proves complete", async () => {
-    await click(button("Try sample data"));
+    await click(button("Or explore with sample data"));
     expect(document.querySelectorAll('[aria-current="step"]')).toHaveLength(1);
     expect(stageButtons()[0].textContent).toBe("01 Import"); // current, so not labelled complete
-    await click(button("Continue to mapping"));
+    await click(button("Continue"));
     expect(stageButtons().map((b) => b.textContent?.trim())).toEqual(["Import, complete", "02 Mapping", "03 Review", "04 Export"]);
     mapCanonical();
     await click(button("Confirm mappings"));
@@ -503,7 +503,7 @@ describe("shell", () => {
   });
 
   it("reaches every available stage by keyboard, skipping unavailable ones", async () => {
-    await click(button("Try sample data"));
+    await click(button("Or explore with sample data"));
     const focusable = stageButtons().filter((b) => !b.disabled && b.tabIndex >= 0);
     expect(focusable.map((b) => b.textContent)).toEqual(["01 Import", "02 Mapping"]);
     focusable[1].focus();
@@ -521,7 +521,7 @@ describe("shell", () => {
   });
 
   it("introduces the current stage with an eyebrow and a lead", async () => {
-    expect(pageText()).toContain("01 / Import");
+    expect(pageText()).toContain("01 / Start a comparison");
     await toReview();
     expect(pageText()).toContain("03 / Review");
     expect(pageText()).toContain("Comparing source-a.csv with source-b.csv.");
@@ -529,8 +529,8 @@ describe("shell", () => {
   });
 
   it("shows a titled alert once and dismisses it from the keyboard-reachable button", async () => {
-    await click(button("Try sample data"));
-    await click(button("Continue to mapping"));
+    await click(button("Or explore with sample data"));
+    await click(button("Continue"));
     mapCanonical();
     act(() => button("Confirm mappings").click());
     select("map-B-productId", "");

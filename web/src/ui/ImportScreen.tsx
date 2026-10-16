@@ -16,31 +16,27 @@ export function ImportScreen({ workflow, samples }: { workflow: Workflow; sample
 
   return (
     <section className="flex flex-col gap-4">
-      {!state.sources.A.dataset && !state.sources.B.dataset && <p>Choose two CSV exports, or explore the sample.</p>}
-
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <SourceCard side="A" workflow={workflow} />
         <SourceCard side="B" workflow={workflow} />
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className="btn" onClick={loadSamples}>
-          Try sample data
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <button type="button" className="min-h-control text-dense text-muted hover:text-ink" onClick={loadSamples}>
+          Or explore with sample data
         </button>
         <button
           type="button"
-          className="btn btn-primary"
+          className="btn btn-primary disabled:border-transparent disabled:bg-canvas disabled:text-ink disabled:opacity-100"
           disabled={!bothLoaded}
           onClick={() => dispatch({ type: "stage/navigated", stage: "mapping" })}
         >
-          Continue to mapping
+          Continue
+          <svg aria-hidden="true" viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 8h10M9 4l4 4-4 4" />
+          </svg>
         </button>
       </div>
-
-      <p className="text-sm">
-        Your files are parsed and held in this browser session only; nothing is saved. When you ask for AI help, the selected
-        column headers, sample cells and candidate fields are sent to the configured AI provider.
-      </p>
     </section>
   );
 }
@@ -56,9 +52,18 @@ function SourceCard({ side, workflow }: { side: Side; workflow: Workflow }) {
     if (file && confirmDiscard(state, `Replacing Source ${side}`)) void chooseFile(side, file);
   };
 
+  const zone = dragging ? "border-accent bg-accent-soft" : error ? "border-error" : "border-line-strong";
+  const facts = dataset && [
+    "Valid CSV",
+    `${dataset.rows.length} records`,
+    `${dataset.columns.length} columns`,
+    `${dataset.byteLength.toLocaleString()} bytes`,
+    ...(dataset.parse.ignoredBlankRecords > 0 ? [`${dataset.parse.ignoredBlankRecords} blank lines skipped`] : []),
+  ];
+
   return (
     <div
-      className={`flex flex-col gap-2 rounded border p-3 ${dragging ? "border-accent" : ""}`}
+      className="flex flex-col gap-2"
       onDragOver={(e) => {
         e.preventDefault();
         setDragging(true);
@@ -70,38 +75,40 @@ function SourceCard({ side, workflow }: { side: Side; workflow: Workflow }) {
         choose(e.dataTransfer.files[0]);
       }}
     >
-      <h2 className="font-semibold">Source {side}</h2>
-      <label htmlFor={inputId}>Choose Source {side} (CSV, or drop a file here)</label>
-      <input
-        id={inputId}
-        type="file"
-        accept=".csv,text/csv"
-        onChange={(e) => {
-          choose(e.target.files?.[0]);
-          e.target.value = ""; // allows choosing the same file again
-        }}
-      />
-      <p aria-live="polite">{pendingToken ? "Reading file…" : dataset ? "Valid CSV" : "No file loaded"}</p>
-      {dataset && (
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 text-sm">
-          <dt>File</dt>
-          <dd>{dataset.fileName}</dd>
-          <dt>Size</dt>
-          <dd>{dataset.byteLength.toLocaleString()} bytes</dd>
-          <dt>Records</dt>
-          <dd>{dataset.rows.length}</dd>
-          <dt>Columns</dt>
-          <dd>{dataset.columns.length}</dd>
-          {dataset.parse.ignoredBlankRecords > 0 && (
+      <label
+        htmlFor={inputId}
+        className={`flex cursor-pointer flex-col items-center gap-1 rounded-panel border border-dashed px-4 py-8 text-center has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent ${zone}`}
+      >
+        <input
+          id={inputId}
+          type="file"
+          accept=".csv,text/csv"
+          className="sr-only"
+          onChange={(e) => {
+            choose(e.target.files?.[0]);
+            e.target.value = ""; // allows choosing the same file again
+          }}
+        />
+        <svg aria-hidden="true" viewBox="0 0 20 20" className="mb-1 size-5 text-muted" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M11.5 2.5H5.5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-10z" />
+          <path d="M11.5 2.5v4h4M10 14.5v-5M7.5 12l2.5-2.5 2.5 2.5" />
+        </svg>
+        <span className="font-medium break-all">
+          {dataset ? (
             <>
-              <dt>Blank lines skipped</dt>
-              <dd>{dataset.parse.ignoredBlankRecords}</dd>
+              <span className="sr-only">Source {side}: </span>
+              {dataset.fileName}
             </>
+          ) : (
+            `Source ${side}`
           )}
-        </dl>
-      )}
+        </span>
+        <span aria-live="polite" className="text-caption text-muted">
+          {pendingToken ? "Reading file…" : facts ? facts.join(" · ") : "Choose or drop a CSV"}
+        </span>
+      </label>
       {error && (
-        <p role="alert" className="text-error">
+        <p role="alert" className="text-dense text-error">
           Could not import this file: {error.message}
           {error.recordIndex !== undefined && ` (data record ${error.recordIndex + 1}`}
           {error.recordIndex !== undefined && error.columnIndex !== undefined && `, column ${error.columnIndex + 1}`}
@@ -111,7 +118,7 @@ function SourceCard({ side, workflow }: { side: Side; workflow: Workflow }) {
       {dataset && (
         <button
           type="button"
-          className="btn self-start"
+          className="btn self-start border-transparent bg-transparent"
           onClick={() => confirmDiscard(state, `Clearing Source ${side}`) && dispatch({ type: "source/cleared", side })}
         >
           Clear Source {side}
