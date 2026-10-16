@@ -156,7 +156,9 @@ Rules:
   (`btn border-transparent bg-transparent`) with an inline `currentColor` reset icon. No other
   header content.
 - **Content column:** one `mx-auto max-w-content px-gutter` wrapper below the header holds the
-  workflow navigation, the stage intro, the error banner and `<main>`, separated by `gap-8`. It is the single place
+  workflow navigation, the error banner, the stage intro and `<main>`, separated by `gap-8`. On Import
+  only, the intro and `<main>` share one card (`rounded-panel border bg-surface p-panel`, `gap-6`); the
+  banner always stays outside it. It is the single place
   to widen the layout when Review needs it.
 - **Workflow navigation:** `<nav aria-label="Workflow">` with an `<ol>` of four native buttons in a
   four-column grid (fits 390px without wrapping). Visible text is `01 Import` … `04 Export`, with the
@@ -174,13 +176,36 @@ Rules:
   Export are never marked complete.
 - **Stage intro:** the shell renders it from the `STAGES` table: an eyebrow (`text-label uppercase
   tracking-wide text-muted`, e.g. `02 / Mapping`), the page's one `<h1 id="stage-title" className="text-page">`
-  written as a sentence ending in a period, and a lead in `text-muted`. `<main aria-labelledby="stage-title">`.
+  written as a sentence ending in a period, and a lead in `text-muted`. A stage may override the eyebrow
+  text (Import: `01 / Start a comparison`); the stepper label stays `Import`. `<main aria-labelledby="stage-title">`.
   Screens render no `h1`; their panels start at `h2`.
 - **Error banner:** `role="alert"`, `rounded-panel border border-error bg-error-soft p-4`, a
   `text-heading text-error` title over the message in `text-dense`, and a `Dismiss` `.btn`. Import
   and analysis errors stay on their card or panel and never appear in the banner.
 - **Destructive reset:** `Start over` asks with `window.confirm` only when a source is loaded or a
   reconciliation exists. Stage navigation never asks and never discards.
+
+## Import (`web/src/ui/ImportScreen.tsx`)
+
+- **Dropzones:** two per row from `md`, stacked below. Each is a `<label>` for a `sr-only` file input
+  (`id="source-{A|B}-file"`), so a click anywhere opens the picker and the input keeps keyboard focus.
+  Styling: `rounded-panel border border-dashed px-4 py-8`, centred, with a `currentColor` upload icon. The
+  boundary is `line-strong` because the zone is a control. The ring is drawn on the label with
+  `has-focus-visible:outline-2 outline-offset-2 outline-accent`.
+
+| State | Second line | Caption (`text-caption text-muted`, `aria-live="polite"`) | Border |
+| --- | --- | --- | --- |
+| Empty | `Source A` | `Choose or drop a CSV` | `line-strong` |
+| Dragging | — | — | `accent` + `bg-accent-soft` |
+| Reading | — | `Reading file…` | — |
+| Loaded | file name (`sr-only` "Source A: " prefix) | `Valid CSV · 4 records · 3 columns · 122 bytes` | `line-strong` |
+| Error | `Source A` | `Choose or drop a CSV` | `error`, with a `role="alert"` message below |
+
+- `Clear Source A` is a ghost `.btn` below a loaded zone, outside the label.
+- **Footer:** `Or explore with sample data` as a quiet text button (`text-dense text-muted`) on the
+  left. `Continue →` (`btn-primary`) on the right; while disabled it is a flat `bg-canvas` chip at full
+  opacity, not the faded primary.
+- There is no privacy paragraph on Import; see the open item in `docs/progress.md`.
 
 ## Accessibility requirements
 

@@ -2,6 +2,30 @@
 
 Last updated: 2026-10-16
 
+## Phase 04-I / Step 03 (2026-10-16): Import screen
+
+Done. Import now matches the editorial reference: one card holds the eyebrow `01 / Start a comparison`,
+the H1 and the lead, then two dashed dropzones, then a footer with `Or explore with sample data` and
+`Continue →`. The parser, reducer, `chooseFile`, `confirmDiscard` and the other screens are unchanged.
+
+- `AccordApp.tsx`: the `STAGES` entries can override the eyebrow. Import frames the intro and `<main>` in a
+  card. The error banner moved above the intro on every stage.
+- `ImportScreen.tsx`: each source card is now a label-wrapped dropzone around a `sr-only` input with the same
+  id. The file facts are a single caption line. Errors and `Clear Source X` sit below the zone.
+- Tests: the action names are `Or explore with sample data` and `Continue` (exact). The file-fact and eyebrow
+  assertions are updated.
+
+Results: `pnpm test` 361/361, `tsc`, lint and build clean, Playwright 6/6. Screenshots were checked at
+1440, 1024 and 390 (empty, keyboard focus, loaded, parse error).
+
+Open:
+- **Spec departure (§3.1, §11.7), chosen by the user:** Import no longer shows "Choose two CSV exports, or
+  explore the sample." or the session-privacy note, and the sample action reads `Or explore with sample
+  data`. Mapping still states what is sent to the AI provider. Restore the privacy note before release
+  if §11.7 stays binding.
+- Not checked: 200% zoom, a real drag and drop in a browser (the handlers are unchanged), and a screen
+  reader pass on the dropzone name.
+
 ## Phase 04-I / Step 02 (2026-10-16): application shell and workflow navigation
 
 Done. The shell now uses the 04-I/01 tokens. Screen content, the reducer, domain, analysis, API
