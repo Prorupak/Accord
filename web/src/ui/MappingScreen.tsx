@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { aiAvailable } from "../analysis/availability";
 import type { AnalysisFailure } from "../analysis/contract";
 import { requestMapSuggestion, type MapSuggestion } from "../analysis/mapSuggestion";
 import type { CanonicalField, MappingError } from "../domain/mapping";
@@ -173,6 +174,9 @@ export function MappingScreen({ workflow }: { workflow: Workflow }) {
             </h2>
             <p className="mt-1.5 text-caption text-muted">Choose a corresponding column for each field. Previews show values from the source file.</p>
           </div>
+          {!aiAvailable() ? (
+            <p className="max-w-xs text-caption text-muted md:text-right">AI mapping suggestions aren&apos;t available in this hosted version. Choose the columns below.</p>
+          ) : (
           <div className="flex flex-col gap-1.5 md:items-end">
             <button
               type="button"
@@ -192,6 +196,7 @@ export function MappingScreen({ workflow }: { workflow: Workflow }) {
               Optional. Sends the column headers and the first five records of each file to the configured AI provider.
             </p> */}
           </div>
+          )}
         </div>
 
         <div aria-live="polite">

@@ -746,3 +746,22 @@ describe("shell", () => {
     expect(document.querySelector('[role="alert"]')).toBeNull();
   });
 });
+
+describe("static hosted build (ACCORD_DEPLOY_TARGET=cloudflare-static)", () => {
+  beforeEach(() => vi.stubEnv("ACCORD_DEPLOY_TARGET", "cloudflare-static"));
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("offers no AI action on mapping or review, says so, and never calls the API", async () => {
+    const calls = stubFetch({});
+    await click(button("Or explore with sample data"));
+    await click(button("Continue"));
+    expect(queryButton("Suggest mappings with AI")).toBeNull();
+    expect(pageText()).toContain("AI mapping suggestions aren't available in this hosted version.");
+    mapCanonical();
+    await click(button("Confirm mappings"));
+    expect(count("Matched pairs")).toBe(2);
+    expect(queryButton("Run AI suggestions")).toBeNull();
+    expect(pageText()).toContain("Status: Unavailable in this hosted version");
+    expect(calls).toEqual([]);
+  });
+});

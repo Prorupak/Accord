@@ -1,5 +1,6 @@
 "use client";
 
+import { aiAvailable } from "../analysis/availability";
 import type { AnalysisFailure } from "../analysis/contract";
 import type { TaskStatus } from "../domain/types";
 import type { Analysis } from "./AccordApp";
@@ -32,6 +33,20 @@ export function AnalysisPanel({ ai }: { ai: Analysis }) {
   const last = modelRuns.at(-1);
   // Failures belong to the latest run; after a reset or new sources the status is idle again.
   const shownFailures = status === "idle" ? [] : failures;
+
+  if (!aiAvailable())
+    return (
+      <section aria-labelledby="ai-title" className="flex min-w-0 flex-1 flex-col gap-0.5 border-t pt-4 text-dense lg:border-t-0 lg:pt-0">
+        <p className="flex items-center gap-2">
+          <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-line-strong" />
+          <span id="ai-title" className="font-semibold">
+            AI suggestions
+          </span>
+          <span className="text-muted">Status: Unavailable in this hosted version</span>
+        </p>
+        <p className="text-muted">Nothing is sent to an AI provider. Exact matches and manual review still work.</p>
+      </section>
+    );
 
   return (
     <section aria-labelledby="ai-title" className="flex min-w-0 flex-1 flex-col gap-2 border-t pt-4 lg:border-t-0 lg:pt-0">
