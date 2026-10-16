@@ -102,7 +102,7 @@ move to the role classes.
 | Token | Value | Utility example |
 | --- | --- | --- |
 | `--spacing-gutter` | 16px; 24px ≥768; 40px ≥1280 | `px-gutter` (page side padding) |
-| `--container-content` | 1180px | `max-w-content` (page shell; Review may go wider later) |
+| `--container-content` | 1180px | `max-w-content` (page shell) |
 | `--spacing-header` | 64px | `h-header` (app header) |
 | `--spacing-panel` | 24px | `p-panel` |
 | `--spacing-control` | 44px | `min-h-control` (buttons, primary touch targets) |
@@ -244,6 +244,46 @@ the footer line are not ported. The screen shows, top to bottom:
   200% zoom). It has a status icon and a `role="status"` block (`n of 4 required mappings complete` /
   `Mappings need attention` / `All core fields mapped`) on the left. On the right is `Confirm mappings →`,
   gated by `view.canConfirmMappings`, with the standard disabled primary. It is full width below `sm`.
+
+## Review (`web/src/ui/ReviewScreen.tsx`, `RecordDetail.tsx`, `AnalysisPanel.tsx`)
+
+`docs/accord-review-design-handoff/` (brief, prototype, screenshots) is the reference. The shell keeps its
+header, stepper, the one `h1` and the same `max-w-content` column as every other stage.
+From top to bottom:
+
+- **Summary strip:** one `dl aria-label="Summary"`. The cells sit on a `bg-line` grid with `gap-px` to
+  form hairlines: 5 columns from `sm`, 2 below, and `Quantity differences` spans both. Counts come from
+  `view.counts`. `Needs review` turns `text-review` when it is non-zero. One caption below says the counts overlap.
+- **Workspace head:** `Reconciliation workspace.` (`h2`, accent period) and its description. From `lg` up
+  the `AnalysisPanel` sits beside it; below `lg` it sits under it behind a hairline. The panel shows a status dot
+  (`line-strong` idle, `accent` running, `success` complete, `review` partial/cancelled, `error` failed),
+  `AI suggestions` and `Status: …`, progress, `Cancel analysis` while running, and `Run AI suggestions`
+  (sparkle icon, `aria-describedby="ai-disclosure"`). Under that come failures on an `error` left rule,
+  the disclosure, and the last request. The disclosure says that names and product IDs are sent and
+  that **quantities are not**.
+- **Workspace:** one bordered panel. From `xl` (1280px) it is a `3fr / 2fr` grid with a fixed `h-176`
+  height, and the queue and inspector scroll separately. Below `xl` a `Show panel` group of two `aria-pressed`
+  buttons (`Records` / `Details`) shows one pane at a time. Choosing a row there opens Details and moves
+  focus to the inspector heading.
+- **Queue:** a toolbar holds `Records`, `n of m shown` (`aria-live`), the filter group (`aria-pressed`
+  buttons with derived counts, quiet when unpressed), and a search over loaded names and IDs.
+  Next comes a sticky `aria-hidden` column header (`md` up) and then `ul#review-queue` of full-width
+  `aria-pressed` row buttons in source order. A row shows a status dot and label (tone from
+  `statusTone`), any non-equal quantity status for a pair, Source A and Source B as name + mono ID, with
+  `· suggested` on a pending counterpart, and `Δ B − A` **for accepted pairs only**. Selection is
+  `bg-accent-soft` with a 2px accent left rule. Below `md` a row stacks with the delta on the right.
+- **Selection:** derived each render: the record the user chose, else the first pending suggestion,
+  else the first record. Any inspector decision pins the shown record, so the selection never moves on
+  its own. Focus moves to the inspector heading (`tabIndex=-1`), which then names the new state.
+- **Inspector:** an eyebrow `Record inspector · Source X, record N`, a title by state (`Matched by
+  product ID`, `Pair approved by you`, `Suggested interpretation`, `Identifier conflict`, `Unresolved
+  ambiguity`, `Unresolved record`) and a status mark. Then come uppercase-label sections behind hairlines.
+  `Original source values` shows two cards with name, product ID, quantity (+ mapped unit), record number and
+  an `All columns` disclosure. A missing side is a dashed `Not paired with a Source X record.`
+  `Quantity comparison` appears for pairs and pending rows; pending rows say the difference is calculated
+  on acceptance. A context slab follows (a 2px left rule: `line`/`canvas` calm, `review` suggestion or
+  ambiguity, `error` conflict with recovery text), then the AI output, then `Choose another record` (the
+  existing picker). An action footer under a hairline holds the existing decision buttons.
 
 ## Accessibility requirements
 

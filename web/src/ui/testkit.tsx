@@ -85,14 +85,14 @@ export function chooseFiles(side: "A" | "B", file: File) {
 
 export const csvFile = (name: string, content: string | Uint8Array) => new File([content as BlobPart], name, { type: "text/csv" });
 
-// The table row whose cells contain `needle`, and its Details button.
-export function rowWith(needle: string): HTMLTableRowElement {
-  const row = [...document.querySelectorAll("tbody tr")].find((r) => text(r).includes(needle));
+// The review queue row (a button) whose text contains `needle`; clicking it opens the inspector.
+export function rowWith(needle: string): HTMLButtonElement {
+  const row = [...document.querySelectorAll("#review-queue button")].find((r) => text(r).includes(needle));
   if (!row) throw new Error(`no row containing ${needle}`);
-  return row as HTMLTableRowElement;
+  return row as HTMLButtonElement;
 }
 
-export const details = (needle: string) => click(button(/^Details/, rowWith(needle)));
+export const details = (needle: string) => click(rowWith(needle));
 
 // The <dd> following a <dt> with this label in the summary.
 export function count(label: string): number {

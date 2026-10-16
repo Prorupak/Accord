@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { batch, confirmed, decide, reduce, rec, rowA, rowB, suggestion } from "../workflow/testkit";
-import { matchesFilter, reviewRows, statusLabel } from "./reviewRows";
+import { filterCount, matchesFilter, matchesQuery, reviewRows, statusLabel, statusTone } from "./reviewRows";
 
 const kinds = (s: Awaited<ReturnType<typeof confirmed>>) => reviewRows(rec(s)).map((r) => `${r.kind}:${r.key}`);
 
@@ -43,5 +43,17 @@ describe("reviewRows", () => {
     const conflicts = rows.filter((r) => matchesFilter(r, "conflicts")).map((r) => r.kind === "unresolved" && r.unresolved.reason);
     expect(conflicts).toEqual(["duplicate_id", "duplicate_id", "conflicting_id"]);
     expect(rows.filter((r) => matchesFilter(r, "matched"))).toEqual([]);
+  });
+
+  it("counts filters, searches a row's own and counterpart names and IDs, and tones each state", async () => {
+    const s = await confirmed();
+    const rows = reviewRows(rec(s));
+    expect([filterCount(rows, "all"), filterCount(rows, "matched"), filterCount(rows, "unresolved"), filterCount(rows, "conflicts")]).toEqual([6, 2, 4, 0]);
+    const flask = rows[0];
+    expect(matchesQuery(rec(s), flask, "  S/S BOTTLE ")).toBe(true);
+    expect(matchesQuery(rec(s), flask, "p01")).toBe(true);
+    expect(matchesQuery(rec(s), flask, "tumbler")).toBe(false);
+    expect(matchesQuery(rec(s), flask, "")).toBe(true);
+    expect(rows.map(statusTone)).toEqual(["success", "muted", "success", "muted", "muted", "muted"]);
   });
 });

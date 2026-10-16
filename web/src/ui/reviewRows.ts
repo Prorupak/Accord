@@ -3,6 +3,7 @@
 import { compareQuantities } from "../domain/quantity";
 import { partition, pendingProposals, unresolvedReason, type ReconciliationState, type Unresolved } from "../domain/reconcile";
 import type { Comparison, Pair, Proposal, RowId, Side } from "../domain/types";
+import { describe } from "./recordFields";
 
 export type ReviewRow =
   | { kind: "pair"; key: RowId; pair: Pair; comparison: Comparison }
@@ -53,6 +54,32 @@ export function matchesFilter(row: ReviewRow, filter: ReviewFilter): boolean {
     case "conflicts":
       return isConflict(row);
   }
+}
+
+export const filterCount = (rows: readonly ReviewRow[], filter: ReviewFilter) => rows.filter((r) => matchesFilter(r, filter)).length;
+
+// The Source B record shown beside this row: its pair or pending suggestion, or the row itself.
+export function counterpart(row: ReviewRow): RowId | null {
+  if (row.kind === "pair") return row.pair.rightId;
+  if (row.kind === "pending") return row.proposal.rightId;
+  return null;
+}
+
+// In-memory search over the names and product IDs of the records a row shows.
+export function matchesQuery(rec: ReconciliationState, row: ReviewRow, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (q === "") return true;
+  const right = counterpart(row);
+  return [row.key, ...(right ? [right] : [])].some((id) => describe(rec, id).toLowerCase().includes(q));
+}
+
+export type Tone = "success" | "review" | "error" | "muted";
+
+export function statusTone(row: ReviewRow): Tone {
+  if (row.kind === "pair") return "success";
+  if (row.kind === "pending") return "review";
+  if (isConflict(row)) return "error";
+  return row.unresolved.reason === "ambiguous" ? "review" : "muted";
 }
 
 const METHOD_LABEL = { exact_id: "Matched by product ID", ai_reviewed: "Approved suggestion", manual: "Manual match" } as const;
