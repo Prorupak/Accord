@@ -4,9 +4,11 @@
 // the dispatch boundary, so the reducer stays deterministic. No network, timers or downloads.
 import { useCallback, useMemo, useReducer } from "react";
 import type { DecisionAction, RowId, Side } from "../domain/types";
-import { parseSource, prepareConfirmation } from "./boundary";
+import { parseSource, prepareConfirmation, type Confirmation } from "./boundary";
 import * as select from "./selectors";
 import { initialWorkflowState, workflowReducer } from "./workflowReducer";
+
+type ConfirmAction = Extract<Confirmation, { ok: true }>["action"];
 
 export function useAccordWorkflow() {
   const [state, dispatch] = useReducer(workflowReducer, initialWorkflowState);
@@ -33,12 +35,16 @@ export function useAccordWorkflow() {
   }, []);
 
   // Uses the state of the render that called it; the reducer rejects the result if the sources
-  // or draft changed while hashing.
-  const confirmMappings = useCallback(async () => {
-    const r = await prepareConfirmation(state);
-    if (r.ok) dispatch(r.action);
-    return r;
-  }, [state]);
+  // or draft changed while hashing. `approve` sees the prepared action first and may decline it,
+  // e.g. after asking the user whether existing decisions may be discarded.
+  const confirmMappings = useCallback(
+    async (approve?: (action: ConfirmAction) => boolean) => {
+      const r = await prepareConfirmation(state);
+      if (r.ok && (!approve || approve(r.action))) dispatch(r.action);
+      return r;
+    },
+    [state],
+  );
 
   // Returns the decision ID so a caller can retry the same intent idempotently.
   const decide = useCallback(

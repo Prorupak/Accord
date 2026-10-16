@@ -288,3 +288,20 @@ ai.modelRuns     // ModelRun[] for the current configuration → prepareExport(r
 - `workflow.state.error` carries the `analysis_failed` message for a failed run.
 - Export waits for `!running` (`canExport`) and passes `ai.modelRuns` in `ExportMeta.modelRuns`.
 - Do not call `/api/suggest` from anywhere else, and do not dispatch `analysis/*` events directly.
+
+## 14. Mapping drafts (`/api/map`, Phase 03-III)
+
+`web/src/analysis/mapSuggestion.ts` is a small one-shot client, not a second orchestrator.
+
+- **Request.** `buildMapRequest` sends each side's column IDs and headers and its first five
+  records (real row IDs, cells as parsed), plus a `requestId` (UUID) and a per-screen
+  `generation` counter.
+- **Response.** A strict Zod mirror of `MapResponse`. The `requestId` and `generation` echoes
+  must match. Every proposed column must exist on its side and be used at most once, otherwise
+  the result is `MODEL_INVALID_OUTPUT`.
+- **Errors.** Non-200 envelopes go through the same `readApiError` as `/api/suggest`, so the
+  messages are the fixed client texts from `contract.ts`. Network failure is `NETWORK`. There is
+  no retry.
+- **Use.** The mapping screen shows the result next to each field. It writes to the draft only
+  when the user clicks "Apply suggested draft", and it never confirms. A result requested for
+  other files is ignored. A failure leaves the draft untouched.

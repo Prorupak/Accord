@@ -80,7 +80,8 @@ What happens on a failure:
 ### Limits and errors
 
 - Request body: 64 KiB, checked before parsing.
-- Inference: one request at a time per server. A concurrent request gets 409 `BUSY`.
+- Inference: one request at a time per server. A concurrent request gets 409 `BUSY`. If the client
+  disconnects (the UI's Cancel), the provider call is cancelled and the slot is freed at once.
 - Time: 45 s overall deadline.
 - Provider attempts: at most 3, shared between retries and repair. At most one of them is a
   repair. SDK retries are disabled.
@@ -102,7 +103,11 @@ Errors use the spec §8.3 envelope `{"error":{code,message,retryable,requestId,r
 | 504 | `TIMEOUT` |
 
 Provider messages and stack traces are never forwarded. Logs record request ID, outcome,
-attempts, duration and token counts only, never cell contents.
+attempts, duration, token counts, per-attempt finish reason and length, and the reason for any
+schema or verification failure (IDs only), never cell contents. For local debugging only, set
+`LOG_MODEL_OUTPUT=true` to also log the raw model output. That output **contains cell values**,
+so it is off by default. In `pnpm dev`, the browser console shows `[accord]` lines with each
+`/api/map` and `/api/suggest` response and the reason for any client-side rejection.
 
 ## Live smoke test (opt-in, makes one real request)
 

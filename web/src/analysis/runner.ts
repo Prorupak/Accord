@@ -6,6 +6,7 @@ import type { ModelRun } from "../domain/exportSnapshot";
 import { isStaleResult } from "../workflow/selectors";
 import type { RunRef, WorkflowAction, WorkflowState } from "../workflow/types";
 import { failure, SUGGEST_LIMITS, type AnalysisFailure, type InferenceMeta } from "./contract";
+import { debugLog } from "./debug";
 import { buildSuggestRequest } from "./request";
 import { readSuggestResponse, type HttpResult, type ReadResult } from "./response";
 
@@ -14,8 +15,11 @@ export type Transport = (body: string, signal: AbortSignal) => Promise<HttpResul
 // Same-origin; next.config.ts rewrites /api/* to the FastAPI server. No client retries: the
 // server owns the provider retry and repair budget.
 export const fetchTransport: Transport = async (body, signal) => {
+  const startedAt = performance.now();
   const res = await fetch("/api/suggest", { method: "POST", headers: { "content-type": "application/json" }, body, signal });
-  return { status: res.status, body: await res.text() };
+  const text = await res.text();
+  debugLog("suggest response", res.status, `${Math.round(performance.now() - startedAt)}ms`, text);
+  return { status: res.status, body: text };
 };
 
 export type RunIO = {
@@ -109,6 +113,7 @@ export function startSuggestRun(run: RunRef & { selectedRowIds: readonly string[
 
       const after = halted();
       const status = after === "cancelled" || after === "superseded" ? "cancelled" : result.ok ? "valid" : "failed";
+      debugLog("suggest batch", requestId, { rows: rowIds.length, status, failure: result.ok ? null : result.error.code });
       deps.onRecord?.(modelRun(requestId, result.meta, Math.max(0, Math.round(deps.now() - startedAt)), status));
       if (after === "cancelled" || after === "superseded") return after;
 

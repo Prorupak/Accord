@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     api_host: str = "127.0.0.1"
     api_port: int = 8000
     frontend_origin: str = "http://localhost:3000"
+    # Dev only: logs raw model output, which contains cell values. Off by default (spec §12.2).
+    log_model_output: bool = False
 
     @property
     def is_configured(self) -> bool:
