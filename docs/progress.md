@@ -2,6 +2,42 @@
 
 Last updated: 2026-10-16
 
+## Hosted API on Render (2026-10-16): web on Pages, gateway on Workers, API on Render
+
+Runbook: `docs/cloudflare-deploy.md`. **Built and verified locally. Nothing new is deployed**
+until the owner creates the Render Blueprint and sets the secrets (runbook, one-time setup).
+
+- **API** (`render.yaml`). The existing Dockerfile runs as one free Render web service per branch
+  (`develop` → `accord-api-staging`, `main` → `accord-api-production`). Each deploys after GitHub
+  checks pass. New settings `API_PUBLIC_HOST` (or Render's `RENDER_EXTERNAL_HOSTNAME`) and
+  `GATEWAY_TOKEN`: the public Host is trusted only while a token is set, and inference then
+  requires `x-accord-gateway-token` (constant-time compare, 403 otherwise). Local and Docker are
+  unchanged.
+- **Gateway.** The service binding is replaced by `API_ORIGIN` (HTTPS) plus the `API_TOKEN`
+  secret. Without the token, AI is off. Redirects are not followed, so the token is never replayed
+  elsewhere.
+- **Web.** The static build takes `ACCORD_API_BASE` (an https origin, rejected otherwise) and
+  calls the gateway with it. AI actions appear only when both loaded files are the built-in sample
+  (`HOSTED_SAMPLE_IDS`, drift-checked against `gateway/src/sample.json`). Otherwise the screens say
+  AI runs only on the sample, and nothing is sent.
+- **CI.** New `gateway` job (tsc, tests, dry-run both envs). `deploy-web` needs it, passes
+  `vars.ACCORD_API_BASE`, and its bundle scan also rejects `GATEWAY_TOKEN` and `onrender.com`.
+- **Removed:** the Cloudflare Python Worker probe (`api/worker/`, `api/wrangler.jsonc`,
+  `api/scripts/worker.sh`, the `workers-*` dev dependencies). The deployed probe Workers
+  `accord-api-staging` (Cloudflare) and the old binding-based `accord-gateway-staging` version are
+  still live with AI off until deleted or redeployed.
+
+| Check (2026-10-16, local macOS) | Result |
+| --- | --- |
+| web `pnpm test` / `tsc` / `lint` / `build` | 382 passed / clean / clean / passes |
+| `pnpm e2e` / `pnpm e2e:static` (Mode A and with `ACCORD_API_BASE`) | 11 passed / 3 + 3 passed |
+| api `pytest -q`, ruff | 48 passed; clean |
+| gateway `vitest`, `tsc`, dry-run both envs | 15 passed; clean; OK |
+| API container with Render env: right Host + token / bad token / no token / bad Host | reaches validation / 403 / 403 / 400 |
+| `wrangler dev` gateway → API container, sample `/api/map` / tampered sample | 503 `NOT_CONFIGURED` from the API (no key, no provider call) / 403 at the gateway |
+| `render.yaml` against Render's JSON schema; actionlint; zizmor | valid; clean; clean |
+| Docker compose smoke | all checks passed |
+
 ## Cloudflare CF-02..CF-05 (2026-10-16): Mode A CI/CD; Python Worker gate failed
 
 Runbook: `docs/cloudflare-deploy.md`. **Result: the web is Mode A in both environments. Public
