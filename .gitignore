@@ -11,8 +11,3 @@ __pycache__/
 .ruff_cache/
 
 .DS_Store
-api/worker/app/
-api/.venv-workers/
-api/python_modules/
-api/pylock.toml
-api/.wrangler/
