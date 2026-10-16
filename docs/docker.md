@@ -138,3 +138,6 @@ an allowed origin. Unset (the default, and every non-Docker run), behaviour is a
 Cloudflare Workers do not run Docker images. These images are for local integration and any
 container host chosen later. This phase adds no Wrangler config, adapters, CI or deployment, and
 deploys nothing to Cloudflare or anywhere else.
+
+For a future public deploy behind Cloudflare (WAF, edge rate limits, stopping direct access to the
+origin), see `docs/edge-protection.md`.

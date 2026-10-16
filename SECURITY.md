@@ -21,6 +21,8 @@ no guaranteed response time. You will get a reply in the advisory once the repor
 
 - The API is designed for loopback or a private Compose network. It is not hardened for direct
   internet exposure.
+- The API's rate limits and daily provider budget are shared, in memory and per process. They
+  do not stop volumetric DDoS. See `docs/edge-protection.md` for edge requirements.
 - `audit.json` contains the original source records. Treat exports as being as sensitive as the
   input files.
 - Data sent to an AI provider is described under "Data handling" in `README.md`.

@@ -28,6 +28,9 @@ Docker keep working as before through the Next rewrite in `web/next.config.ts`.
 
 - The single inference slot (`BUSY`) applies per function instance. Separate instances do not
   share it.
+- The rate limits and the daily provider budget (`docs/edge-protection.md`) are also in memory
+  per instance. Separate instances keep separate counters, and a cold start resets them. Set a
+  credit limit on the OpenRouter key as the hard cap.
 - Fluid compute's default maximum duration (300 s) covers the 45 s inference deadline.
 - Not yet checked on a real deploy: whether the function receives `http.disconnect` (the Cancel
   flow needs it) and whether it sees the public `Host` header.

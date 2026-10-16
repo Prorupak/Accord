@@ -2,7 +2,21 @@
 
 Last updated: 2026-10-16
 
-## Deployment phase 01 (2026-10-16): Docker and Compose
+## Security phase 01 (2026-10-16): Rate limits and provider budget
+
+Done. `api/app/limits.py` adds a stdlib sliding window that takes a monotonic clock and keeps
+O(limit) memory behind a lock. The limits are `/api/map` 6/min and `/api/suggest` 12/min, applied
+after the Host/Origin guard and before the body is read, plus a global budget of 30 OpenRouter
+attempts per day that counts retries and repairs. The budget is reserved before every provider
+call. The three settings are validated and exposed under `/api/capabilities` `limits`. Over a
+limit the API returns 429 `RATE_LIMITED` with `retryAfterSeconds`/`Retry-After`. Each limit is one
+shared bucket because forwarding headers are client-writable. Uvicorn runs without proxy-header
+trust (Docker and `python -m app`), and Docker adds `--limit-concurrency 32 --timeout-keep-alive 5`.
+`docs/edge-protection.md` covers the limitations and Cloudflare guidance for a future public
+deploy. Open: per-client limits, cross-instance counters and a frontend message for server-side
+429.
+
+ (2026-10-16): Docker and Compose
 
 Done. `web/Dockerfile` (Next.js standalone, repo-root context), `api/Dockerfile` (uv locked
 production sync, uvicorn on 0.0.0.0), `compose.yaml` (web on 127.0.0.1:3000 only, api internal with a
