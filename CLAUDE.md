@@ -38,6 +38,8 @@ pnpm dev        # http://localhost:3000
 pnpm lint
 pnpm build
 npx tsc --noEmit
+pnpm build:cloudflare   # static export to out/ (Mode A, no AI actions); see docs/progress.md
+pnpm e2e:static         # builds out/ and runs e2e/*.static.ts against a plain static server
 ```
 
 Docker (repo root; see `docs/docker.md`): `docker compose up -d --build`, then
