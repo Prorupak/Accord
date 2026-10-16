@@ -2,6 +2,61 @@
 
 Last updated: 2026-10-16
 
+## Phase 04-I / Step 02 (2026-10-16): application shell and workflow navigation
+
+Done. The shell now uses the 04-I/01 tokens. Screen content, the reducer, domain, analysis, API
+and export code are unchanged.
+
+- **`web/src/ui/AccordApp.tsx`:** a 64px `h-header` with the text brand `accord.` (accent period)
+  and `Start over`, then one `max-w-content` column holding the workflow navigation, the error
+  banner and `<main>`.
+  - **Navigation:** four native buttons in a 4-column grid (`1. Import` … `4. Export`). Current is
+    `aria-current="step"` with an accent underline; unavailable steps are `disabled` via
+    `canEnterStage`. "Complete" is derived (both sources loaded; mappings confirmed) and exposed in
+    the accessible name; Review and Export are never claimed complete. No new state.
+  - **Error banner:** `role="alert"`, error tokens, a per-kind title over the existing message,
+    and `Dismiss`. Routing is unchanged, so import and analysis errors still show only in place.
+  - **Start over:** confirms with `window.confirm` whenever a source is loaded or mappings are
+    confirmed, then dispatches the existing `workflow/reset`. Back navigation never asks.
+- **Headings:** the shell renders none. Each screen's title is its one `h1` (`text-page`). Panel
+  headings moved down one level (`h3`→`h2`, `h4`→`h3`) in Import, Mapping, AnalysisPanel and
+  RecordDetail. Copy is unchanged.
+- **Tests:** 9 new shell tests in `AccordApp.test.tsx` (gating, current/complete semantics,
+  keyboard order, one `h1` per stage, alert dismissal, reset with nothing to lose, cancelled and
+  confirmed reset, decisions kept across back navigation, a pending AI run dropped by Start over).
+  New `web/e2e/shell.e2e.ts`: 390px visibility and overflow, Tab/Enter stage navigation, and the
+  Start over dialog dismiss/accept.
+- **Docs:** "Application shell" section in `docs/ui-design-system.md`; skill rule 9 points to it.
+
+| Check | Result |
+| --- | --- |
+| `pnpm test` | 21 files, 360 tests passed |
+| `npx tsc --noEmit`, `pnpm lint`, `pnpm build` | Clean |
+| `pnpm exec playwright test` | 6 passed (3 existing, 3 new) |
+| Screenshots at 1440, 1024, 390 (Import, Mapping, Review, Export, focus) | Inspected; no horizontal scroll, all four steps visible at 390 |
+
+Not checked in a browser: the error banner (covered by unit tests only), 200% zoom and
+reduced motion. No transitions were added.
+
+### Revision: match the editorial shell reference
+
+- The header drops the tagline. `Start over` is now a ghost button with a reset icon.
+- Steps read `01 Import` … `04 Export`. A completed step shows a `success` check instead of its
+  number, and its accessible name is `Import, complete` (screen-reader-only text, not an `aria-label`).
+- **The shell now owns the stage intro:** an eyebrow (`02 / MAPPING`), the single `h1` and a muted
+  lead.
+  - The titles are "Bring two exports into agreement.", "Understand your columns.", "Review the
+    proposed matches." (the lead names both files) and "Export a traceable result."
+  - The four screens no longer render an `h1`. Import's lead moved into the shell.
+- Tests were updated for the new names and titles, and one test was added for the eyebrow and lead.
+
+| Check | Result |
+| --- | --- |
+| `pnpm test` | 21 files, 361 tests passed |
+| `npx tsc --noEmit`, `pnpm lint`, `pnpm build` | Clean |
+| `pnpm exec playwright test` | 6 passed |
+| Screenshots at 1440, 1024 and 390 (all four stages) | Inspected; matches the reference layout, all four steps fit at 390 |
+
 ## Phase 04-I / Step 01 (2026-10-16): design foundations
 
 Done. The app now has one token source and a documented design system. No screen was

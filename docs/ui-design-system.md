@@ -103,7 +103,7 @@ move to the role classes.
 | --- | --- | --- |
 | `--spacing-gutter` | 16px; 24px ≥768; 40px ≥1280 | `px-gutter` (page side padding) |
 | `--container-content` | 1180px | `max-w-content` (page shell; Review may go wider later) |
-| `--spacing-header` | 64px | `h-header` (app header, when redesigned) |
+| `--spacing-header` | 64px | `h-header` (app header) |
 | `--spacing-panel` | 24px | `p-panel` |
 | `--spacing-control` | 44px | `min-h-control` (buttons, primary touch targets) |
 | `--spacing-control-dense` | 36px | `min-h-control-dense` (inputs and selects in dense forms) |
@@ -148,6 +148,39 @@ Rules:
   (`--duration-panel`) when built. There is no `transition: all`.
 - `prefers-reduced-motion: reduce` collapses every transition and animation to about 0 and
   disables smooth scroll. State changes must still be understandable without motion.
+
+## Application shell (`web/src/ui/AccordApp.tsx`)
+
+- **Header:** full-width `h-header` bar, `bg-surface`, bottom hairline. Left: the text brand
+  `accord` + accent-coloured period (`text-section`). Right: `Start over` as a ghost button
+  (`btn border-transparent bg-transparent`) with an inline `currentColor` reset icon. No other
+  header content.
+- **Content column:** one `mx-auto max-w-content px-gutter` wrapper below the header holds the
+  workflow navigation, the stage intro, the error banner and `<main>`, separated by `gap-8`. It is the single place
+  to widen the layout when Review needs it.
+- **Workflow navigation:** `<nav aria-label="Workflow">` with an `<ol>` of four native buttons in a
+  four-column grid (fits 390px without wrapping). Visible text is `01 Import` … `04 Export`, with the
+  number in `text-caption tabular-nums text-muted`.
+
+| Step state | Semantics | Presentation |
+| --- | --- | --- |
+| Current | `aria-current="step"` | 600 weight, 2px `accent` underline |
+| Complete | `sr-only` ", complete" (name: `Import, complete`) | `success` check replaces the number, 2px `ink` underline |
+| Available | enabled button | ink text, `line` underline |
+| Unavailable | native `disabled` (not focusable, no dispatch) | `muted` text, `line` underline |
+
+  Availability is `canEnterStage`. Completion is derived, never stored, and claimed only when state
+  proves it: Import once both sources are loaded, Mapping once mappings are confirmed. Review and
+  Export are never marked complete.
+- **Stage intro:** the shell renders it from the `STAGES` table: an eyebrow (`text-label uppercase
+  tracking-wide text-muted`, e.g. `02 / Mapping`), the page's one `<h1 id="stage-title" className="text-page">`
+  written as a sentence ending in a period, and a lead in `text-muted`. `<main aria-labelledby="stage-title">`.
+  Screens render no `h1`; their panels start at `h2`.
+- **Error banner:** `role="alert"`, `rounded-panel border border-error bg-error-soft p-4`, a
+  `text-heading text-error` title over the message in `text-dense`, and a `Dismiss` `.btn`. Import
+  and analysis errors stay on their card or panel and never appear in the banner.
+- **Destructive reset:** `Start over` asks with `window.confirm` only when a source is loaded or a
+  reconciliation exists. Stage navigation never asks and never discards.
 
 ## Accessibility requirements
 
