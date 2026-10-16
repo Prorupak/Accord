@@ -9,6 +9,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 
+from . import limits
 from .config import get_settings
 from .schemas import MAX_BODY_BYTES
 
@@ -52,18 +53,29 @@ def _invalid(message: str, request_id: str = "") -> ApiError:
 def _guard_origin(request: Request) -> None:
     s = get_settings()
     allowed_hosts = {f"127.0.0.1:{s.api_port}", f"localhost:{s.api_port}"}
-    if request.headers.get("host", "") not in allowed_hosts:
+    internal = {f"{s.api_internal_host}:{s.api_port}"} if s.api_internal_host else set()
+    if request.headers.get("host", "") not in allowed_hosts | internal | s.vercel_hosts:
         raise _invalid("Unexpected Host header.")
     origin = request.headers.get("origin")
     if origin is not None and origin not in {
         s.frontend_origin,
         *(f"http://{h}" for h in allowed_hosts),
+        *(f"https://{h}" for h in s.vercel_hosts),
     }:
         raise ApiError("INVALID_INPUT", 403, "Origin not allowed.")
 
 
-async def read_json[M: BaseModel](request: Request, model: type[M]) -> M:
+async def read_json[M: BaseModel](request: Request, model: type[M], route: str) -> M:
     _guard_origin(request)
+    # Before the body is read or validated, so a flood costs no parsing or provider calls.
+    if (wait := limits.route_window(route).acquire()) is not None:
+        raise ApiError(
+            "RATE_LIMITED",
+            429,
+            "Too many analysis requests. Try again shortly.",
+            retryable=True,
+            retry_after=wait,
+        )
     if request.headers.get("content-type", "").split(";")[0].strip() != "application/json":
         raise ApiError("INVALID_INPUT", 415, "Content-Type must be application/json.")
     too_large = ApiError("PAYLOAD_TOO_LARGE", 413, f"Request body exceeds {MAX_BODY_BYTES} bytes.")
@@ -97,7 +109,7 @@ _slot = asyncio.Lock()
 
 
 @asynccontextmanager
-async def inference_slot(request_id: str):
+async def inference_slot(request: Request, request_id: str):
     if _slot.locked():
         raise ApiError(
             "BUSY",
@@ -107,4 +119,27 @@ async def inference_slot(request_id: str):
             request_id=request_id,
         )
     async with _slot:
-        yield
+        # A client that hangs up (Cancel in the UI) must free the slot now, not after the deadline.
+        task = asyncio.current_task()
+        disconnected = False
+
+        async def watch() -> None:
+            nonlocal disconnected
+            while (await request.receive())["type"] != "http.disconnect":
+                pass
+            disconnected = True
+            task.cancel()
+
+        watcher = asyncio.create_task(watch())
+        try:
+            yield
+        except asyncio.CancelledError:
+            if not disconnected:
+                raise
+            task.uncancel()
+            log.info("client disconnected request=%s", request_id)
+            raise ApiError(
+                "CANCELLED", 499, "Client cancelled the request.", request_id=request_id
+            ) from None
+        finally:
+            watcher.cancel()

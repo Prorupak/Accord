@@ -1,0 +1,7 @@
+# Review routing only. Code-owner approval is not required while this is a solo-maintainer repo.
+*                    @Prorupak
+/.github/            @Prorupak
+/web/src/domain/     @Prorupak
+/web/src/analysis/   @Prorupak
+/api/app/            @Prorupak
+/fixtures/contracts/ @Prorupak

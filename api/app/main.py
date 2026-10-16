@@ -53,5 +53,8 @@ def capabilities():
             "maxProviderAttempts": MAX_PROVIDER_ATTEMPTS,
             "maxOutputTokens": MAX_OUTPUT_TOKENS,
             "concurrentInferenceRequests": 1,
+            "mapRequestsPerMinute": s.rate_limit_map_per_minute,
+            "suggestRequestsPerMinute": s.rate_limit_suggest_per_minute,
+            "providerAttemptsPerDay": s.provider_attempts_per_day,
         },
     }

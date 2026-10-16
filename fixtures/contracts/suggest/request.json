@@ -1,0 +1,76 @@
+{
+  "requestId": "0b6f1c9e-4d0a-4c55-9d38-3c1f7f1f0a01",
+  "generation": 3,
+  "configurationHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "rows": [
+    {
+      "left": {
+        "rowId": "A:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:1",
+        "fields": [
+          {
+            "side": "A",
+            "rowId": "A:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:1",
+            "columnId": "c1",
+            "value": "Organic cotton tote natural"
+          }
+        ]
+      },
+      "candidates": [
+        {
+          "rowId": "B:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:1",
+          "fields": [
+            {
+              "side": "B",
+              "rowId": "B:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:1",
+              "columnId": "c1",
+              "value": "Natural cotton shopping bag"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "left": {
+        "rowId": "A:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:3",
+        "fields": [
+          {
+            "side": "A",
+            "rowId": "A:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:3",
+            "columnId": "c1",
+            "value": "Travel cup blue"
+          },
+          {
+            "side": "A",
+            "rowId": "A:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:3",
+            "columnId": "c0",
+            "value": "TC-9"
+          }
+        ]
+      },
+      "candidates": [
+        {
+          "rowId": "B:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:3",
+          "fields": [
+            {
+              "side": "B",
+              "rowId": "B:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:3",
+              "columnId": "c1",
+              "value": "Travel tumbler blue 350ml"
+            }
+          ]
+        },
+        {
+          "rowId": "B:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:4",
+          "fields": [
+            {
+              "side": "B",
+              "rowId": "B:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:4",
+              "columnId": "c1",
+              "value": "Travel tumbler blue 500ml"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

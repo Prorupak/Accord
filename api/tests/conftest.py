@@ -6,7 +6,7 @@ import openai
 import pytest
 from fastapi.testclient import TestClient
 
-from app import config, openrouter
+from app import config, limits, openrouter
 from app.main import app
 
 BASE_URL = "http://127.0.0.1:8000"
@@ -21,6 +21,7 @@ def settings(monkeypatch):
     monkeypatch.setenv("FRONTEND_ORIGIN", "http://localhost:3000")
     config.get_settings.cache_clear()
     monkeypatch.setattr(openrouter, "_client", None)
+    limits.reset()
     yield
     config.get_settings.cache_clear()
 
@@ -30,13 +31,15 @@ def client():
     return TestClient(app, base_url=BASE_URL)
 
 
-def completion(content, prompt_tokens=100, completion_tokens=50):
+def completion(content, prompt_tokens=100, completion_tokens=50, finish_reason="stop"):
     if not isinstance(content, str):
         content = json.dumps(content)
     return SimpleNamespace(
         model="test/free-model",
         usage=SimpleNamespace(prompt_tokens=prompt_tokens, completion_tokens=completion_tokens),
-        choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
+        choices=[
+            SimpleNamespace(message=SimpleNamespace(content=content), finish_reason=finish_reason)
+        ],
     )
 
 
@@ -64,4 +67,12 @@ def provider(monkeypatch):
         return item if isinstance(item, SimpleNamespace) else completion(item)
 
     monkeypatch.setattr(openrouter, "_create", fake_create)
+    return state
+
+
+@pytest.fixture
+def clock(monkeypatch):
+    """Fake monotonic clock for the limiters; advance with `clock.now += seconds`."""
+    state = SimpleNamespace(now=1000.0)
+    monkeypatch.setattr(limits, "_clock", lambda: state.now)
     return state

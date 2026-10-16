@@ -21,8 +21,8 @@ Keep each explanation under 240 characters."""
 
 @router.post("/api/map", response_model=MapResponse)
 async def map_columns(request: Request) -> MapResponse:
-    req = await read_json(request, MapRequest)
-    async with inference_slot(req.requestId):
+    req = await read_json(request, MapRequest, "map")
+    async with inference_slot(request, req.requestId):
         out, meta = await infer(
             route="map",
             request_id=req.requestId,

@@ -62,7 +62,10 @@ def test_valid_mapping(client, provider):
     call = provider.calls[0]
     assert call["max_tokens"] == 2000
     assert call["response_format"]["json_schema"]["strict"] is True
-    assert call["extra_body"] == {"provider": {"require_parameters": True}}
+    assert call["extra_body"] == {
+        "provider": {"require_parameters": True},
+        "reasoning": {"enabled": False},
+    }
 
 
 @pytest.mark.parametrize(
@@ -150,3 +153,34 @@ def test_content_type_origin_and_host(client):
     )
     assert post(client, headers={"origin": "https://evil.example"}).status_code == 403
     assert post(client, headers={"host": "evil.example"}).status_code == 400
+
+
+def test_internal_host_only_when_configured(client, provider, monkeypatch):
+    assert post(client, headers={"host": "api:8000"}).status_code == 400
+    monkeypatch.setenv("API_INTERNAL_HOST", "api")
+    config.get_settings.cache_clear()
+    provider.script = [model_output(B=side(name=None))]
+    assert post(client, headers={"host": "api:8000"}).status_code == 200
+    for host in ("api:9999", "evil:8000"):
+        assert post(client, headers={"host": host}).status_code == 400
+    origin = {"host": "api:8000", "origin": "http://api:8000"}
+    assert post(client, headers=origin).status_code == 403
+
+
+def test_vercel_hosts_only_when_set(client, provider, monkeypatch):
+    same_origin = {"host": "accord-x.vercel.app", "origin": "https://accord-x.vercel.app"}
+    assert post(client, headers=same_origin).status_code == 400
+    monkeypatch.setenv("VERCEL_URL", "accord-x.vercel.app")
+    config.get_settings.cache_clear()
+    provider.script = [model_output(B=side(name=None))]
+    assert post(client, headers=same_origin).status_code == 200
+    foreign = {**same_origin, "origin": "https://evil.example"}
+    assert post(client, headers=foreign).status_code == 403
+    assert post(client, headers={"host": "evil.vercel.app"}).status_code == 400
+
+
+def test_internal_host_rejects_patterns(monkeypatch):
+    for bad in ("*", "api:8000", "evil.example"):
+        monkeypatch.setenv("API_INTERNAL_HOST", bad)
+        with pytest.raises(ValueError):
+            config.Settings()

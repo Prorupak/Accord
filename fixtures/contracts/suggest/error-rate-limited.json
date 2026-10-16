@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "RATE_LIMITED",
+    "message": "AI provider rate limit reached.",
+    "retryable": true,
+    "requestId": "0b6f1c9e-4d0a-4c55-9d38-3c1f7f1f0a01",
+    "retryAfterSeconds": 7
+  }
+}

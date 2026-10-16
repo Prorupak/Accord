@@ -80,14 +80,25 @@ What happens on a failure:
 ### Limits and errors
 
 - Request body: 64 KiB, checked before parsing.
-- Inference: one request at a time per server. A concurrent request gets 409 `BUSY`.
+- Inference: one request at a time per server. A concurrent request gets 409 `BUSY`. If the client
+  disconnects (the UI's Cancel), the provider call is cancelled and the slot is freed at once.
 - Time: 45 s overall deadline.
 - Provider attempts: at most 3, shared between retries and repair. At most one of them is a
   repair. SDK retries are disabled.
 - Output: `max_tokens` 2000.
+- Rate limits: `/api/map` 6 and `/api/suggest` 12 requests per rolling minute
+  (`RATE_LIMIT_MAP_PER_MINUTE`, `RATE_LIMIT_SUGGEST_PER_MINUTE`), and 30 OpenRouter attempts per
+  rolling 24 h across both routes, counting retries and repairs (`PROVIDER_ATTEMPTS_PER_DAY`).
+  Each limit is one bucket shared by all callers, because forwarding headers cannot be trusted.
+  Counters are in memory, kept separately by each process, and reset on restart. Over a limit the
+  API returns 429 `RATE_LIMITED` with `retryAfterSeconds` and `Retry-After`. See
+  `docs/edge-protection.md` for what these limits do not cover.
 
 Requests must have `Content-Type: application/json`, a Host of `127.0.0.1:<port>` or
-`localhost:<port>`, and, if an `Origin` header is present, `FRONTEND_ORIGIN` as its value.
+`localhost:<port>` (plus `API_INTERNAL_HOST:<port>` when set, which Docker Compose does for the
+service name `api`, and the Vercel deployment, branch and production hostnames when Vercel sets
+`VERCEL_URL`, `VERCEL_BRANCH_URL` and `VERCEL_PROJECT_PRODUCTION_URL`), and, if an `Origin` header is
+present, `FRONTEND_ORIGIN` (or `https://` plus one of those Vercel hostnames) as its value.
 
 Errors use the spec §8.3 envelope `{"error":{code,message,retryable,requestId,retryAfterSeconds?}}`:
 
@@ -97,12 +108,16 @@ Errors use the spec §8.3 envelope `{"error":{code,message,retryable,requestId,r
 | 413 | `PAYLOAD_TOO_LARGE` |
 | 409 | `BUSY` |
 | 503 | `NOT_CONFIGURED` |
-| 429 | `RATE_LIMITED` |
+| 429 | `RATE_LIMITED` (provider 429, this server's route limit, or the daily provider budget) |
 | 502 | `MODEL_INVALID_OUTPUT` / `UPSTREAM_ERROR` |
 | 504 | `TIMEOUT` |
 
 Provider messages and stack traces are never forwarded. Logs record request ID, outcome,
-attempts, duration and token counts only, never cell contents.
+attempts, duration, token counts, per-attempt finish reason and length, and the reason for any
+schema or verification failure (IDs only), never cell contents. For local debugging only, set
+`LOG_MODEL_OUTPUT=true` to also log the raw model output. That output **contains cell values**,
+so it is off by default. In `pnpm dev`, the browser console shows `[accord]` lines with each
+`/api/map` and `/api/suggest` response and the reason for any client-side rejection.
 
 ## Live smoke test (opt-in, makes one real request)
 

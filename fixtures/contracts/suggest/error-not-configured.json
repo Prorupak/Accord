@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "NOT_CONFIGURED",
+    "message": "AI inference is not configured. Set OPENROUTER_API_KEY and OPENROUTER_MODEL on the API server.",
+    "retryable": false,
+    "requestId": "0b6f1c9e-4d0a-4c55-9d38-3c1f7f1f0a01"
+  }
+}

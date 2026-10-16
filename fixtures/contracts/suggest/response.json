@@ -1,0 +1,64 @@
+{
+  "requestId": "0b6f1c9e-4d0a-4c55-9d38-3c1f7f1f0a01",
+  "generation": 3,
+  "configurationHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "proposals": [
+    {
+      "leftId": "A:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:1",
+      "rightId": "B:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:1",
+      "outcome": "suggest",
+      "reasonCode": "semantic_equivalence",
+      "evidence": [
+        {
+          "side": "A",
+          "rowId": "A:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:1",
+          "columnId": "c1",
+          "value": "Organic cotton tote natural"
+        },
+        {
+          "side": "B",
+          "rowId": "B:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:1",
+          "columnId": "c1",
+          "value": "Natural cotton shopping bag"
+        }
+      ],
+      "explanation": "Both describe a natural cotton tote bag.",
+      "generation": 3,
+      "configurationHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "leftId": "A:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:3",
+      "rightId": null,
+      "outcome": "abstain",
+      "reasonCode": "ambiguous",
+      "evidence": [
+        {
+          "side": "B",
+          "rowId": "B:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:3",
+          "columnId": "c1",
+          "value": "Travel tumbler blue 350ml"
+        },
+        {
+          "side": "B",
+          "rowId": "B:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:4",
+          "columnId": "c1",
+          "value": "Travel tumbler blue 500ml"
+        }
+      ],
+      "explanation": "Capacity is not stated for the cup; both tumblers remain plausible.",
+      "generation": 3,
+      "configurationHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+  ],
+  "meta": {
+    "provider": "openrouter",
+    "model": "example/model",
+    "promptVersion": 1,
+    "durationMs": 1834,
+    "attempts": 1,
+    "usage": {
+      "inputTokens": 512,
+      "outputTokens": 140
+    }
+  }
+}
