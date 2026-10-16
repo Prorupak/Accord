@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
     proxyTimeout: 60_000,
   },
   cacheComponents: true,
+  // Only the Docker build (web/Dockerfile) sets this; `next start` and local builds are unchanged.
+  output: process.env.NEXT_OUTPUT_STANDALONE === "1" ? "standalone" : undefined,
   // Same-origin proxy to the FastAPI backend (api/); keeps the Python host out of UI code.
   async rewrites() {
     const apiOrigin = process.env.ACCORD_API_ORIGIN ?? "http://127.0.0.1:8000";

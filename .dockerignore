@@ -1,0 +1,21 @@
+# Build context for web/Dockerfile (repo root). Secrets, local installs and build output stay out.
+**/.env
+**/.env.*
+!**/.env.example
+**/node_modules
+**/.next
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/*.tsbuildinfo
+**/.DS_Store
+web/test-results
+web/playwright-report
+web/coverage
+.git
+.gitignore
+.claude
+api
+docs
+*.md
