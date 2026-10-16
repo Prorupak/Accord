@@ -167,6 +167,18 @@ def test_internal_host_only_when_configured(client, provider, monkeypatch):
     assert post(client, headers=origin).status_code == 403
 
 
+def test_vercel_hosts_only_when_set(client, provider, monkeypatch):
+    same_origin = {"host": "accord-x.vercel.app", "origin": "https://accord-x.vercel.app"}
+    assert post(client, headers=same_origin).status_code == 400
+    monkeypatch.setenv("VERCEL_URL", "accord-x.vercel.app")
+    config.get_settings.cache_clear()
+    provider.script = [model_output(B=side(name=None))]
+    assert post(client, headers=same_origin).status_code == 200
+    foreign = {**same_origin, "origin": "https://evil.example"}
+    assert post(client, headers=foreign).status_code == 403
+    assert post(client, headers={"host": "evil.vercel.app"}).status_code == 400
+
+
 def test_internal_host_rejects_patterns(monkeypatch):
     for bad in ("*", "api:8000", "evil.example"):
         monkeypatch.setenv("API_INTERNAL_HOST", bad)
