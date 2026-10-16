@@ -41,7 +41,7 @@ const STAGES: ReadonlyArray<{
       return d ? `Comparing ${d.A.fileName} with ${d.B.fileName}.` : "";
     },
   },
-  { id: "export", label: "Export", title: "Export a traceable result.", lead: () => "Download the reconciled records, unresolved items and audit trail." },
+  { id: "export", label: "Export", title: "Export a traceable result.", lead: () => "Package the reconciled records, unresolved items and audit trail in one consistent revision." },
 ];
 
 const step = (i: number) => String(i + 1).padStart(2, "0");

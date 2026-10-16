@@ -527,6 +527,38 @@ describe("partial analysis", () => {
 });
 
 describe("export", () => {
+  const exportSummary = () =>
+    Object.fromEntries([...document.querySelectorAll("main dl > div")].map((d) => [d.querySelector("dt")?.textContent, d.querySelector("dd .sr-only")?.textContent]));
+  const downloadHrefs = () => [...document.querySelectorAll<HTMLAnchorElement>("a[download]")].map((a) => a.getAttribute("href"));
+
+  it("revokes all three links when the user returns to Review, prepares the new revision afresh, and keeps decisions on the way back", async () => {
+    const urls = stubObjectUrls();
+    await toReview();
+    await click(button("Continue to export"));
+    await click(button("Prepare export"));
+    const first = downloadHrefs();
+    expect(first).toHaveLength(3);
+    expect(first.every((h) => urls.live.has(h!))).toBe(true);
+
+    await click(button("Back to review"));
+    expect(stage()).toContain("Review");
+    await details("Organic cotton tote natural");
+    await click(button(/^Pair with Natural cotton shopping bag/));
+    expect(count("Matched pairs")).toBe(3);
+    await click(button("Continue to export"));
+    expect(downloadHrefs()).toHaveLength(0);
+    expect(urls.revoked).toEqual(first);
+    expect(pageText()).toContain("Ready to prepare");
+    expect(exportSummary()["Matched pairs"]).toBe("3");
+
+    await click(button("Prepare export"));
+    const second = downloadHrefs();
+    expect(second).toHaveLength(3);
+    expect(second.some((h) => first.includes(h))).toBe(false);
+    await click(button("Back to review"));
+    expect(count("Matched pairs")).toBe(3);
+  });
+
   it("downloads three artifacts from one snapshot with the canonical counts and a replayable audit", async () => {
     const urls = stubObjectUrls();
     await toReview();
@@ -534,8 +566,12 @@ describe("export", () => {
     await details("Organic cotton tote natural");
     await click(button("Accept pair"));
     await click(button("Continue to export"));
-    expect(pageText()).toContain("3 matched pairs. 1 unresolved record in A, 2 in B.");
+    expect(exportSummary()).toEqual({ "Matched pairs": "3", "Unresolved in A": "1", "Unresolved in B": "2", "Quantity differences": "1" });
+    expect(pageText()).toContain("3 unresolved records");
+    expect(document.querySelectorAll("a[download]")).toHaveLength(0);
+    expect(pageText()).toContain("Prepare first");
     await click(button("Prepare export"));
+    expect(pageText()).toContain("Export prepared");
 
     const links = [...document.querySelectorAll<HTMLAnchorElement>("a[download]")];
     expect(links.map((l) => [l.getAttribute("download"), l.getAttribute("type")])).toEqual([

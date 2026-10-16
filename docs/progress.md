@@ -2,6 +2,40 @@
 
 Last updated: 2026-10-16
 
+## Phase 04-III (2026-10-16): Export experience
+
+Done. Export follows `docs/accord-export-design-handoff/`. It has a flat four-cell summary `dl`, a
+"Prepare your handoff." status panel with a single primary action, "Inside the package." (three connected
+file panels), two hairline-separated notes (unresolved is valid; audit contains source data, replay is not
+tamper-proof authentication) and a `Back to review` stage action. The domain, workflow, analysis, API,
+export formats and `useExportArtifacts` are unchanged; links still use the hook's URLs and `isStillCurrent` guard.
+
+- `ExportScreen.tsx` rewritten; `AccordApp.tsx` uses the prototype's Export lead.
+- States are the real ones: `Ready to prepare` → `Export prepared` (revision from the snapshot) and the
+  existing violation / Blob-failure alerts. Before a valid preparation each file shows `Prepare first`
+  text, not a link. Download links keep the accessible name `Download <file>`.
+- Partial / cancelled / failed analysis and unreviewed suggestions show a review notice; the button is
+  only disabled while an analysis runs (`canExport`), with a visible reason.
+- Tests: the canonical export test now checks the summary `dl`, the pre-prepare state and `Export prepared`;
+  a new test covers prepare → Back to review → change a decision → return (all three URLs revoked, no links,
+  `Ready to prepare`, a fresh set of URLs, decisions kept). The two e2e sentence assertions read the summary;
+  a new Playwright test checks 1440 / 1024 / 390 with no overflow and 44px prepare/download targets.
+
+Results: `pnpm test` 373/373. `tsc`, lint and build are clean. Playwright 11/11. Production screenshots at 1440
+(unprepared and prepared), 1024 and 390 were compared with the prototype PNGs.
+
+Deviations from the prototype:
+- Not ported: the prototype-state dropdown, `Incomplete AI analysis` toggle, demo tag, toast, simulated
+  downloads, fixed counts/revision and the "Export concept" footer.
+- No `Export out of date` state: leaving Export unmounts the screen and the hook revokes its URLs, so a
+  returning user always sees `Ready to prepare` for the current revision. No stale link can exist.
+- No `Preparing` state: `prepareExport` is synchronous.
+- Matched-pairs sub-caption is `Accepted one-to-one`, not an exact/reviewed split (`counts()` has no breakdown).
+- Caption drops `Nothing downloaded yet`; Accord does not track downloads.
+
+Open:
+- Not checked: 200% zoom, reduced motion in a browser, and a screen-reader pass.
+
 ## Phase 04-II (2026-10-16): Review workspace
 
 Done. Review follows `docs/accord-review-design-handoff/` (see "Review" in `docs/ui-design-system.md`).

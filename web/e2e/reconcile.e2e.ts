@@ -13,6 +13,12 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/api/**", (route) => route.abort());
 });
 
+// Export shows zero-padded counts; the screen-reader text carries the plain number.
+async function expectExportCounts(page: Page, matched: string, a: string, b: string) {
+  for (const [label, n] of [["Matched pairs", matched], ["Unresolved in A", a], ["Unresolved in B", b]])
+    await expect(count(page, label).locator(".sr-only")).toHaveText(n);
+}
+
 async function sampleToReview(page: Page) {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Bring two exports into agreement." })).toBeVisible();
@@ -62,7 +68,7 @@ test("canonical reconciliation with a deterministic AI test double, exported and
   await expect(row(page, "Travel cup blue")).toContainText("Unresolved: ambiguous");
 
   await page.getByRole("button", { name: "Continue to export" }).click();
-  await expect(page.getByText("3 matched pairs. 1 unresolved record in A, 2 in B.")).toBeVisible();
+  await expectExportCounts(page, "3", "1", "2");
   await page.getByRole("button", { name: "Prepare export" }).click();
 
   const matches = await download(page, "matches.csv");
@@ -87,7 +93,7 @@ test("canonical reconciliation with a deterministic AI test double, exported and
   await page.getByRole("button", { name: "Undo match" }).click();
   await page.getByRole("button", { name: "04 Export" }).click();
   await expect(page.getByRole("link", { name: /^Download/ })).toHaveCount(0);
-  await expect(page.getByText("2 matched pairs. 2 unresolved records in A, 3 in B.")).toBeVisible();
+  await expectExportCounts(page, "2", "2", "3");
 });
 
 test("AI provider failure leaves manual reconciliation and a consistent export", async ({ page }) => {
@@ -202,4 +208,26 @@ test("a long queue scrolls inside its pane without stretching the page below the
     .getByRole("button", { name: "Continue to export" })
     .evaluate((b) => document.documentElement.scrollHeight - (b.getBoundingClientRect().bottom + window.scrollY));
   expect(belowFooter).toBeLessThan(100);
+});
+
+test("Export lays out without page overflow at 1440, 1024 and 390, with 44px actions", async ({ page }) => {
+  const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await sampleToReview(page);
+  await page.getByRole("button", { name: "Continue to export" }).click();
+  for (const width of [1440, 1024, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(page.getByRole("link", { name: /^Download/ })).toHaveCount(0);
+    expect(await overflow()).toBe(0);
+    if (process.env.EXPORT_SHOTS) await page.screenshot({ path: `${process.env.EXPORT_SHOTS}/export-${width}.png`, fullPage: true });
+  }
+  await page.getByRole("button", { name: "Prepare export" }).click();
+  await expect(page.getByRole("link", { name: /^Download/ })).toHaveCount(3);
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await overflow()).toBe(0);
+    expect((await page.getByRole("button", { name: "Prepare again" }).boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    expect((await page.getByRole("link", { name: "Download audit.json" }).boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    if (process.env.EXPORT_SHOTS) await page.screenshot({ path: `${process.env.EXPORT_SHOTS}/export-${width}-prepared.png`, fullPage: true });
+  }
 });
