@@ -2,6 +2,61 @@
 
 Last updated: 2026-10-16
 
+## Cloudflare D0 + CF-01 (2026-10-16): static-export build target (Mode A)
+
+**Mode A: local static build only.** Nothing is deployed. There is no Cloudflare account, Worker,
+provider key or GitHub secret. Plan: `docs/accord-cloudflare-deployment-plan.md`.
+
+`ACCORD_DEPLOY_TARGET=cloudflare-static` (`pnpm build:cloudflare`) writes a static site to `web/out/`.
+When it is unset, `pnpm dev`, `pnpm build`, `pnpm start`, Playwright and Docker standalone behave as
+before. An unknown value, or the static target combined with `NEXT_OUTPUT_STANDALONE=1`, fails the build.
+
+The real build turned up these static-export blockers:
+
+1. `rewrites()` is only *warned* about under `output: "export"`, then silently dropped, so `/api/*`
+   would get a 404 HTML page. In static mode the key is now omitted.
+2. `cacheComponents: true` fails the export step with `Invariant: PPR cannot be enabled in export
+   mode`. `partialPrefetching` requires `cacheComponents`. Both are off in static mode only. The app
+   uses no cache APIs, and the default build keeps both on.
+3. Two client calls, `/api/map` (Mapping "Suggest mappings with AI") and `/api/suggest` (Review "Run
+   AI suggestions"), would hit the 404 and show up as `MALFORMED_RESPONSE`. In static mode
+   (`src/analysis/availability.ts`, which reads the value inlined by `next.config.ts`) both actions
+   are replaced by "unavailable in this hosted version" text. Nothing is sent. The transport code is
+   still in the bundle but no UI path reaches it.
+
+Not blockers: the build-time fixture read in `app/page.tsx`, which works when built from `web/`.
+There is no `next/image`, `next/headers`, cookies, server actions, route handlers or proxy, and the
+UI never calls `/api/capabilities`.
+
+Tests: `next.config.test.ts` covers the mode switch. `AccordApp.test.tsx` has a static-mode test
+for the hidden AI actions with zero fetches. `pnpm e2e:static` (`playwright.static.config.ts`,
+`e2e/static.static.ts`) serves `out/` with `python3 -m http.server` and runs the canonical sample →
+manual pair → three downloads → audit replay at 390px, then a refresh and a 404. It asserts zero
+`/api/` requests and zero failed asset loads. The run is serial because Python's server resets
+connections under parallel workers. The CI `e2e` job gained a `pnpm e2e:static` step.
+
+| Check (2026-10-16, local macOS) | Result |
+| --- | --- |
+| `pnpm install --frozen-lockfile`, `next typegen`, `tsc --noEmit` | Clean |
+| `pnpm test` | 378 passed |
+| `pnpm build` (default) | Passes; Cache Components and PPR still on; no export warning |
+| `pnpm e2e` | 11 passed |
+| `pnpm build:cloudflare` | `out/index.html`, `404.html`, `favicon.ico`; 964 KB |
+| `grep -rlE "OPENROUTER\|sk-or-\|api_key\|127.0.0.1:8000" out/` | No matches |
+| `pnpm e2e:static` | 3 passed |
+| Bad target / static+standalone | Build fails with the explicit error |
+| `uv run pytest -q`, ruff check/format | 47 passed; clean |
+| `docker compose build/up --wait`, `scripts/docker-smoke.sh` | All smoke checks passed |
+| `pnpm lint` | **Fails, also on clean HEAD `65dbdde`**: `typescript-eslint does not support TS 7.0` (from the TS 7 Dependabot merge, #12) |
+
+D0 blockers (gate CF-02, not CF-01):
+
+- `pnpm lint` is broken on `main` by TS 7 / typescript-eslint, so CI's `web` job cannot be green.
+  It needs an owner decision: pin TypeScript 6, or wait for typescript-eslint support.
+- `gh run list` returns HTTP 404 from this machine, so the CI status on GitHub was not verified.
+- Mapping's `aria-describedby="ai-disclosure"` is still orphaned in local mode. Static mode does not
+  render the button. Fix it before any public AI (Mode B).
+
 ## Deployment phase 01 (2026-10-16): Docker and Compose
 
 Done. `web/Dockerfile` (Next.js standalone, repo-root context), `api/Dockerfile` (uv locked

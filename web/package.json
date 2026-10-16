@@ -5,10 +5,12 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:cloudflare": "ACCORD_DEPLOY_TARGET=cloudflare-static next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:static": "playwright test -c playwright.static.config.ts"
   },
   "dependencies": {
     "next": "16.4.1",

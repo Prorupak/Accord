@@ -94,6 +94,8 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       # The config's webServer builds and serves the app; tests stub every /api/* call.
       - run: pnpm e2e --reporter=list,html --trace=retain-on-failure
+      # The Cloudflare static export (out/) on a plain static server: no API, so no stubs.
+      - run: pnpm e2e:static --reporter=list,html --trace=retain-on-failure
       # Synthetic fixtures only (fixtures/inventory), so traces hold no real inventory data.
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
