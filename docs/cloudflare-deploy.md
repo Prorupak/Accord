@@ -1,113 +1,111 @@
-# Cloudflare deployment runbook
+# Deployment runbook
 
 Plan and requirements: `docs/accord-cloudflare-fullstack-claude-prompt.md`. Status: `docs/progress.md`.
 
 ## What runs where
 
-| Environment | Web (Pages `accord-web`) | Python Worker | Gateway | Public AI |
+| Environment | Web (Cloudflare Pages `accord-web`) | Gateway (Cloudflare Worker) | API (Render, free) | Public AI |
 | --- | --- | --- | --- | --- |
-| `develop` → staging | Branch alias `https://develop.accord-web-3so.pages.dev` | `accord-api-staging` (private probe) | `accord-gateway-staging` (AI off) | **Off** (Mode A) |
-| `main` → production | `https://accord-web-3so.pages.dev` | Not deployed | Not deployed | **Off** (Mode A) |
-| Local / Docker | `pnpm dev`, `docker compose` | uvicorn | None | `api/.env` key, unchanged |
+| `develop` → staging | `https://develop.accord-web-3so.pages.dev` | `accord-gateway-staging` | `accord-api-staging` | Sample only, once switched on |
+| `main` → production | `https://accord-web-3so.pages.dev` | `accord-gateway-production` | `accord-api-production` | Sample only, once switched on |
+| Local / Docker | `pnpm dev`, `docker compose` | None | uvicorn / container | `api/.env` key, any data |
 
-Cloudflare account `278fc37d9cb379ee892fd4077a325214`. Free plan.
+Cloudflare account `278fc37d9cb379ee892fd4077a325214`, Free plan. Render workspace on the Free
+plan (no payment method).
 
-**Mode B (public AI) failed its gate on 2026-10-16.** The deployed Python Worker used 5–13 ms
-CPU on `/health` alone, against a 10 ms limit on Workers Free (see progress.md). The
-web stays in Mode A: AI is shown as unavailable and the site makes no `/api` requests. The
-staging probe Workers are left deployed with AI off. They never receive web traffic.
+The browser talks only to the gateway. The gateway accepts only the built-in sample
+(`gateway/src/sample.json`), spends a global daily quota (a SQLite Durable Object), and forwards
+to the Render API with a shared token. The API trusts its `onrender.com` Host only while
+`GATEWAY_TOKEN` is set, and then rejects any inference request without that token. A user's own
+files never leave the browser: the web offers AI only when both loaded files are the sample
+(`web/src/analysis/availability.ts`).
 
-## Automated web deploys (`.github/workflows/ci.yml`, job `deploy-web`)
+The Python API ran on a Cloudflare Python Worker during gate B (2026-10-16) but used 5–13 ms CPU
+on `/health` against the 10 ms Workers Free limit, so it moved to Render.
 
-The job runs only on a **push** to `develop` or `main`, after `web`, `api`, `e2e` and `docker`
-pass on that same commit. PRs, forks, `release/**` and `workflow_dispatch` never deploy.
+## Automated deploys
 
-1. It checks out `github.sha` and runs `pnpm build:cloudflare`.
-2. It greps `out/` for provider secrets.
-3. It runs `wrangler pages deploy out --branch <ref> --commit-hash <sha>`.
-4. It asserts that Pages reports `production` for `main` and `preview` for `develop`. A
-   different answer means the project's production branch is misconfigured.
-5. It runs `pnpm e2e:static` (canonical sample → 3 exports → audit replay, 390px, 404, zero
-   `/api` calls) against the exact deployment URL.
+- **Web.** `.github/workflows/ci.yml`, job `deploy-web`. It runs on a **push** to `develop` or
+  `main` after `web`, `api`, `gateway`, `e2e` and `docker` pass on that commit. It builds with
+  `pnpm build:cloudflare`, scans `out/` for secrets and API origins, runs `wrangler pages deploy`,
+  checks that Pages reports `production` for `main` and `preview` for `develop`, and reruns
+  `pnpm e2e:static` against the deployment URL. The GitHub environment variable
+  `ACCORD_API_BASE` (the gateway origin) turns on the AI actions for the sample. If it is unset,
+  the site has no AI (Mode A).
+- **API.** `render.yaml` (a Render Blueprint). Each service follows its branch with
+  `autoDeployTrigger: checksPass`, so Render deploys only after GitHub checks pass. Only changes
+  under `api/` trigger a build.
+- **Gateway.** Deployed by hand. It changes rarely, and its secrets are set by hand anyway:
+  `cd gateway && pnpm exec wrangler deploy --env staging` (then `--env production`). CI runs its
+  tests and dry-runs both environments.
 
-The URL and deployment ID are written to the job summary. Concurrency is `deploy-<branch>` and
-never cancels a running deploy.
-
-### One-time setup (owner)
+## One-time setup (owner)
 
 1. **GitHub CLI access.** This machine's `gh` (`rupak885`) gets 404 on `Prorupak/Accord`. Run
-   `gh auth login` with an account that has access, then verify CI with `gh run list`.
-2. **Environments.** In Settings → Environments, create `staging` with deployment branch
-   `develop` and `production` with deployment branch `main`. Add required reviewers to
-   `production` if your plan allows it. A private repo on GitHub Free has no branch policies or
-   reviewers, so the job's own `if:` is then the only branch guard.
-3. **Cloudflare token.** In My Profile → API Tokens → Create Custom Token, grant *Account →
-   Cloudflare Pages → Edit* on account `278fc37d…` only. Create one token per environment so
-   either can be revoked alone.
-4. **Per environment**, add secret `CLOUDFLARE_API_TOKEN` and variable
-   `CLOUDFLARE_ACCOUNT_ID=278fc37d9cb379ee892fd4077a325214`.
-5. **Pages project.** In Workers & Pages → `accord-web` → Settings, set production branch
-   `main`. Leave Git integration off: CI is the only deploy owner.
-6. **Branch rules.** Keep the required checks `web`, `api`, `e2e` and `docker`. `deploy-web`
-   runs only on push, so it is not a PR check.
+   `gh auth login` with an account that has access.
+2. **GitHub environments.** Create `staging` (deployment branch `develop`) and `production`
+   (deployment branch `main`). In each, add secret `CLOUDFLARE_API_TOKEN` (a custom token with
+   only *Account → Cloudflare Pages → Edit* on this account, one token per environment) and
+   variable `CLOUDFLARE_ACCOUNT_ID=278fc37d9cb379ee892fd4077a325214`.
+3. **Pages project.** In Workers & Pages → `accord-web` → Settings, set the production branch to
+   `main`. Leave Git integration off, because CI owns deploys.
+4. **Render.** Sign up at render.com (GitHub login, no card), then New → Blueprint, pick this repo
+   and `render.yaml`. Enter `OPENROUTER_API_KEY` when prompted. Use a separate OpenRouter key per
+   environment with a low credit limit set at openrouter.ai. Note each service's URL. If Render
+   added a suffix to the name, update `API_ORIGIN` in `gateway/wrangler.jsonc`.
+5. **Gateway secrets**, per environment, typed at the prompt:
+   `cd gateway && pnpm exec wrangler secret put API_TOKEN --env staging`. The value is the
+   service's `GATEWAY_TOKEN` from Render → Environment. Then deploy the gateway.
+6. **Switch AI on for staging.** Run `pnpm exec wrangler secret put PUBLIC_AI_ENABLED --env staging`
+   with the value `true`. Then set GitHub variable `ACCORD_API_BASE` in environment `staging` to
+   `https://accord-gateway-staging.<subdomain>.workers.dev` and push to `develop`.
+7. **Production**, only after staging is verified: repeat steps 5 and 6 with `--env production`
+   and the `production` GitHub environment, then merge to `main`.
 
-## Rollback
+## Free-plan behaviour
 
-- **Web.** `cd web && pnpm exec wrangler pages deployment list --project-name accord-web`
-  lists IDs, branches and commits. In the dashboard, open Workers & Pages → `accord-web` →
-  Deployments → *Rollback* on the last good production deployment. Staging (preview)
-  deployments are rolled back by pushing a revert to `develop`.
-- **Workers.** Run `wrangler rollback --env staging` from `gateway/`, or
-  `scripts/worker.sh rollback --env staging` from `api/`. Roll back the gateway before the
-  API. Rollback never touches Durable Object data, so quota usage is kept.
+- A Render free service sleeps after 15 minutes without traffic. The first request after that
+  waits about a minute. The web's run deadline is 4 minutes, and a map request can be retried.
+  Hitting the gateway's `/health` wakes the API.
+- The gateway reserves 3 units per call (`DAILY_UNITS=30`, so 10 calls per UTC day per
+  environment) before forwarding, and never refunds them.
 
-## Kill switch and probe Workers
+| Symptom | Meaning | Action |
+| --- | --- | --- |
+| Gateway `429 RATE_LIMITED` | Daily unit budget used | Wait for 00:00 UTC |
+| Gateway `503 NOT_CONFIGURED` | Kill switch off, `API_TOKEN` missing, or the API has no OpenRouter key | Check the secrets |
+| Gateway `/health` shows `api: status 400` or `403` | Host or token mismatch | Compare `API_TOKEN` with Render's `GATEWAY_TOKEN` |
+| `502 UPSTREAM_ERROR "credits"` | Provider budget used | Check the OpenRouter key's limit |
+| Render service suspended | 750 free hours or bandwidth used up | Wait for the next month |
+| Cloudflare error 1027 | 100k requests/day used | Wait for 00:00 UTC |
 
-- Public AI is on only while the gateway secret `PUBLIC_AI_ENABLED` is exactly `true`. It is
-  absent today.
-- To turn AI off, run `cd gateway && pnpm exec wrangler secret delete PUBLIC_AI_ENABLED --env <env>`.
-  This takes effect immediately with no rebuild, and the static site keeps working.
-- To remove the probe entirely, run
-  `pnpm exec wrangler delete --name accord-gateway-staging`, then
-  `... --name accord-api-staging`.
-- The Python Worker has `workers_dev: false` and `preview_urls: false`, and
-  `https://accord-api-staging.<subdomain>.workers.dev` returns 404. The only way in is the
-  gateway's service binding (`http://accord-api:8000`, accepted by the existing Host guard
-  through `API_INTERNAL_HOST`).
-- The gateway accepts only the built-in sample (`gateway/src/sample.json`). That file is
-  generated and drift-checked by `web/src/domain/gatewaySample.test.ts`. The gateway reserves
-  3 units per call (`DAILY_UNITS=30`, so 10 calls per UTC day) in a SQLite Durable Object
-  before forwarding, and never refunds them.
+## Kill switch and rollback
 
-## Secrets and names (never values)
+- **AI off, immediately:** `cd gateway && pnpm exec wrangler secret delete PUBLIC_AI_ENABLED --env <env>`.
+  The site keeps working and shows the AI error message. To hide the AI actions as well, clear
+  `ACCORD_API_BASE` in the GitHub environment and redeploy.
+- **Web:** Workers & Pages → `accord-web` → Deployments → *Rollback* on the last good production
+  deployment (`pnpm exec wrangler pages deployment list --project-name accord-web` lists them).
+  Staging rolls back by pushing a revert to `develop`.
+- **Gateway:** `cd gateway && pnpm exec wrangler rollback --env <env>`. Quota data is untouched.
+- **API:** Render → service → Events → *Rollback* (free plans keep the two previous deploys).
+
+## Secrets (names only)
 
 | Name | Where | Purpose |
 | --- | --- | --- |
 | `CLOUDFLARE_API_TOKEN` | GitHub env `staging` / `production` | Pages deploy |
-| `CLOUDFLARE_ACCOUNT_ID` | GitHub env variable | Non-secret |
-| `OPENROUTER_API_KEY` | Cloudflare secret on `accord-api-<env>` (not set) | Provider key, Mode B only |
-| `PUBLIC_AI_ENABLED` | Cloudflare secret on `accord-gateway-<env>` (not set) | Kill switch |
+| `CLOUDFLARE_ACCOUNT_ID`, `ACCORD_API_BASE` | GitHub env variables | Not secret |
+| `OPENROUTER_API_KEY` | Render service env (`sync: false`) | Provider key |
+| `GATEWAY_TOKEN` | Render service env (generated) | The API accepts inference only with it |
+| `API_TOKEN` | Cloudflare secret on `accord-gateway-<env>` | Same value as `GATEWAY_TOKEN` |
+| `PUBLIC_AI_ENABLED` | Cloudflare secret on `accord-gateway-<env>` | Kill switch, `true` to enable |
 
 ## Rotation
 
-- **Cloudflare token.** Create a new token, update the GitHub environment secret, then
-  delete the old token in the dashboard.
-- **OpenRouter key.** Revoke it at openrouter.ai/keys first, then put the new one with
-  `scripts/worker.sh secret put OPENROUTER_API_KEY --env <env>` (from `api/`, typed at the
-  prompt). The local `api/.env` key is separate.
-
-## Free-plan triage
-
-| Symptom | Meaning | Action |
-| --- | --- | --- |
-| Error **1027** | 100k requests/day used | Wait for 00:00 UTC |
-| Error **1102** or `exceededCpu` in Workers Logs | CPU limit hit | Expected for the Python Worker; keep AI off |
-| Gateway `429 RATE_LIMITED` | Daily unit budget used | Wait for 00:00 UTC |
-| `502 UPSTREAM_ERROR "credits"` | Provider budget | Check the OpenRouter key's limit |
-
-## Local Python Worker work
-
-Run `scripts/worker.sh dev|deploy|...` from `api/`. It copies `app/` into the gitignored
-`worker/app/`, the module root that keeps `.venv/` and `tests/` out of the upload. It also sets
-`CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false`, because plain `wrangler dev` would load
-`api/.env` and make real provider calls.
+- **Gateway token.** In Render, set a new `GATEWAY_TOKEN` and save (this redeploys). Then put the
+  same value as the gateway's `API_TOKEN`. Inference fails with 403 between the two steps.
+- **OpenRouter key.** Revoke it at openrouter.ai/keys, then set the new value in Render →
+  Environment.
+- **Cloudflare token.** Create a new one, update the GitHub environment secret, then delete the
+  old one.

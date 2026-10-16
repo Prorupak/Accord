@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { expect, test } from "vitest";
+import { HOSTED_SAMPLE_IDS } from "../analysis/availability";
 import { parseDataset } from "./parseCsv";
 
 // gateway/src/sample.json is the hosted gateway's allowlist: the only values it lets reach the
@@ -24,4 +25,6 @@ test("gateway sample allowlist matches the parser's view of fixtures/inventory",
   const file = new URL("gateway/src/sample.json", root);
   if (process.env.UPDATE_GATEWAY_SAMPLE) writeFileSync(file, want);
   expect(readFileSync(file, "utf8")).toBe(want);
+  // The web offers hosted AI only for these ids; a mismatch would offer AI the gateway then refuses.
+  expect(HOSTED_SAMPLE_IDS).toEqual({ A: (sides.A as { datasetId: string }).datasetId, B: (sides.B as { datasetId: string }).datasetId });
 });

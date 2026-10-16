@@ -1,6 +1,7 @@
 """Trust boundary: request guards, the §8.3 error envelope and the single inference slot."""
 
 import asyncio
+import hmac
 import json
 import logging
 from contextlib import asynccontextmanager
@@ -53,8 +54,13 @@ def _guard_origin(request: Request) -> None:
     s = get_settings()
     allowed_hosts = {f"127.0.0.1:{s.api_port}", f"localhost:{s.api_port}"}
     internal = {f"{s.api_internal_host}:{s.api_port}"} if s.api_internal_host else set()
-    if request.headers.get("host", "") not in allowed_hosts | internal:
+    token = s.gateway_token.get_secret_value().encode() if s.gateway_token else b""
+    public = {s.api_public_host} if s.api_public_host and token else set()
+    if request.headers.get("host", "") not in allowed_hosts | internal | public:
         raise _invalid("Unexpected Host header.")
+    sent = request.headers.get("x-accord-gateway-token", "").encode()
+    if token and not hmac.compare_digest(sent, token):
+        raise ApiError("INVALID_INPUT", 403, "Gateway token required.")
     origin = request.headers.get("origin")
     if origin is not None and origin not in {
         s.frontend_origin,

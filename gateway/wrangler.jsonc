@@ -1,6 +1,7 @@
 // Public gateway Worker (docs/cloudflare-deploy.md). Bindings and vars are not inherited by
-// environments, so each environment repeats them with its own Python Worker and quota storage.
-// PUBLIC_AI_ENABLED is a secret, absent by default (AI off): `wrangler secret put PUBLIC_AI_ENABLED --env <env>`.
+// environments, so each environment repeats them with its own API (Render) and quota storage.
+// Secrets, absent by default (AI off): API_TOKEN (the Render service's GATEWAY_TOKEN) and
+// PUBLIC_AI_ENABLED ("true"). Set each with `wrangler secret put <NAME> --env <env>`.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "accord-gateway",
@@ -13,10 +14,10 @@
       "name": "accord-gateway-staging",
       "workers_dev": true,
       "preview_urls": false,
-      "services": [{ "binding": "API", "service": "accord-api-staging" }],
       "durable_objects": { "bindings": [{ "name": "QUOTA", "class_name": "Quota" }] },
       "vars": {
         "ENVIRONMENT": "staging",
+        "API_ORIGIN": "https://accord-api-staging.onrender.com",
         // 3 units per call (max provider attempts): 30 units = 10 calls per UTC day.
         "DAILY_UNITS": "30",
         "ALLOWED_ORIGINS": "https://develop.accord-web-3so.pages.dev"
@@ -26,10 +27,10 @@
       "name": "accord-gateway-production",
       "workers_dev": true,
       "preview_urls": false,
-      "services": [{ "binding": "API", "service": "accord-api-production" }],
       "durable_objects": { "bindings": [{ "name": "QUOTA", "class_name": "Quota" }] },
       "vars": {
         "ENVIRONMENT": "production",
+        "API_ORIGIN": "https://accord-api-production.onrender.com",
         "DAILY_UNITS": "30",
         "ALLOWED_ORIGINS": "https://accord-web-3so.pages.dev"
       }
