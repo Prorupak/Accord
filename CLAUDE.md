@@ -16,7 +16,7 @@ The **API** only performs two bounded inference calls and never stores data or a
 ## Layout
 
 - `api/`: FastAPI backend (Python 3.13, uv). See `api/README.md` for endpoints, limits and error codes.
-- `web/`: Next.js 16 / React 19 / Tailwind 4 frontend. Still the starter page; no UI built yet.
+- `web/`: Next.js 16 / React 19 / Tailwind 4 frontend. Working workflow UI in `web/src/ui/`.
 - `fixtures/`: test CSV data.
 
 ## Commands
@@ -68,6 +68,10 @@ Request flow: `app/http.py` guards → route in `app/routes/` (`mapping.py` → 
   startup; inference then returns 503 `NOT_CONFIGURED`.
 
 ## Frontend notes
+
+UI styling follows the `accord-design-system` skill and `docs/ui-design-system.md`. Design tokens
+live only in the `@theme static` block of `web/app/globals.css`; components use the generated
+utilities (`bg-canvas`, `text-muted`, `rounded-panel`), never hex values or Tailwind palette colors.
 
 `web/AGENTS.md`: this Next.js version has breaking changes from what you may know. Read the
 relevant guide in `web/node_modules/next/dist/docs/` before writing Next.js code. `next dev`

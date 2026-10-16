@@ -1,6 +1,46 @@
 # Accord progress
 
-Last updated: 2026-10-15
+Last updated: 2026-10-16
+
+## Phase 04-I / Step 01 (2026-10-16): design foundations
+
+Done. The app now has one token source and a documented design system. No screen was
+redesigned, and the domain, workflow, analysis, export and API code is unchanged.
+
+- **`web/app/globals.css`** is the canonical token source. It has a Tailwind 4 `@theme static`
+  block holding:
+  - The semantic palette from spec §11.2, plus `line-strong` for control boundaries. Tailwind's
+    default palette is removed.
+  - The Helvetica and mono stacks, and nine type roles (`display` … `caption`).
+  - Layout tokens: gutter, content width, header, panel, control heights.
+  - 8px and 12px radii, one overlay shadow, and motion durations.
+- **Base layer:** hairline default border colour, the body on canvas/ink, a global
+  `:focus-visible` ring, an `aria-invalid` border and a reduced-motion override.
+- **Component layer:** `.btn` and `.btn-primary` cover hover, active, selected (via
+  `aria-current`/`aria-pressed`), disabled and busy. Form controls get the same treatment.
+  `.data-table` uses tabular numerals.
+- **`app/layout.tsx`:** Geist removed. It was loaded but never rendered.
+- **Screens:** colour swaps only. Palette classes became tokens (`text-error`, `border-error`,
+  `border-accent`, `bg-accent-soft`), the shell uses `max-w-content px-gutter`, and the summary
+  counts use `tabular-nums`. The dark-mode variant was removed (light-only v1).
+- **Docs:**
+  - New `docs/ui-design-system.md`.
+  - The `accord-design-system` skill (`.claude/skills/`) now points at that document, and its
+    reference uses `error`/`line-strong`.
+  - `CLAUDE.md` links both.
+
+| Check (run 2026-10-16) | Result |
+| --- | --- |
+| `pnpm test` (web) | 21 files, 351 tests passed |
+| `npx tsc --noEmit` / `pnpm lint` / `pnpm build` (web) | Clean |
+| `pnpm exec playwright test` (web) | 3 passed |
+| Visual | Playwright screenshots of Import, Mapping and Review at 1440, 1024 and 390 px with reduced motion. No page overflow, and the focus ring is 2px accent |
+| Contrast | Computed for every token pair (see `docs/ui-design-system.md`) |
+
+Still open: the Import, Mapping, Review and Export redesigns (Phase 04-I later steps), the app
+header at `h-header`, the type-role adoption in screens, and the Review layouts in spec
+§11.3–11.4. Not checked: a manual screen-reader pass, 200% zoom, the Export screen at all three
+widths (the e2e covers 390px only), and Safari/Firefox rendering.
 
 ## Phase 03-III (2026-10-15): functional application
 
