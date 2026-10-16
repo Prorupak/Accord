@@ -2,6 +2,14 @@
 
 Last updated: 2026-10-16
 
+## Release v0.1.0 (2026-10-16)
+
+Version 0.1.0 in `api/pyproject.toml`, `api/app/main.py` and `web/package.json`. `CHANGELOG.md`
+has the `[0.1.0]` section. Gates: CI on `develop` → `main` (pending); the live OpenRouter smoke
+(`api/README.md`) is run by the maintainer, result: _pending_. Shipped as is, by decision: the
+Mapping AI-disclosure caption stays commented out and the Import privacy note stays removed
+(both listed under Known limitations in the changelog).
+
 ## Security phase 01 (2026-10-16): Rate limits and provider budget
 
 Done. `api/app/limits.py` adds a stdlib sliding window that takes a monotonic clock and keeps

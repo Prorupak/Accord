@@ -159,12 +159,12 @@ assuming.
 
 ## 11. Releases
 
-No release exists yet. When the first one is ready:
+To cut a release (v0.1.0 shown; substitute the new version):
 
 1. Confirm the open release gates in `docs/progress.md`, including the live OpenRouter run.
 2. Merge `develop` into `main` through a PR.
-3. In `CHANGELOG.md`, move the `Unreleased` entries under `## [0.1.0] - YYYY-MM-DD` and add a
-   fresh `Unreleased` heading.
+3. In `CHANGELOG.md`, move the `Unreleased` entries under `## [0.1.0] - YYYY-MM-DD`, add a
+   fresh `Unreleased` heading and update the compare links at the bottom.
 4. Releases → **Draft a new release** → tag `v0.1.0` on `main` → title `v0.1.0` → paste the
    changelog section → **Publish release**.
 
