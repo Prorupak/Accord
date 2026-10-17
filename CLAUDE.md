@@ -43,9 +43,10 @@ npx tsc --noEmit
 Docker (repo root; see `docs/docker.md`): `docker compose up -d --build`, then
 `scripts/docker-smoke.sh`, `docker compose down`.
 
-Run both servers together for end-to-end work. `web/next.config.ts` rewrites `/api/*` to
-`ACCORD_API_ORIGIN` (default `http://127.0.0.1:8000`). UI code calls `/api/...` on its own origin,
-so there is no CORS.
+Run both servers together for end-to-end work. `web/next.config.ts` rewrites only `/api/map`,
+`/api/suggest` and `/api/capabilities` to `ACCORD_API_ORIGIN` (default `http://127.0.0.1:8000`);
+every other `/api/*` path belongs to Next. Root `vercel.json` mirrors this allowlist. UI code calls
+`/api/...` on its own origin, so there is no CORS.
 
 ## Backend architecture
 

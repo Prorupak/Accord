@@ -1,6 +1,45 @@
 # Accord progress
 
-Last updated: 2026-10-16
+Last updated: 2026-10-17
+
+## Phase 05-I/A (2026-10-17): API routing allowlist
+
+Done on `feat/phase-05-i-a-api-routing` (base `develop` `5b268e7`). Only `/api/map`,
+`/api/suggest` and `/api/capabilities` reach FastAPI; every other `/api/*` path is Next's, so the
+planned `/api/auth/*` and `/api/projects/*` handlers cannot land in Python. No auth, database or
+project code.
+
+- `web/next.config.ts`: the `/api/:path*` catch-all became three exact rewrites to
+  `ACCORD_API_ORIGIN`. Other settings unchanged.
+- `vercel.json`: `/api/(.*)` → `api` became three exact rules; `/(.*)` → `web` stays last.
+  Vercel routes to the first matching rule and does not fall back, so no auth/project rules are
+  needed.
+- `web/src/routing/apiRouting.test.ts` (35 tests): evaluates both rule lists in order with
+  Next's own path matcher. Fails (25/35) when either catch-all is restored.
+- `web/e2e/routing.e2e.ts` (8 tests): auth, projects, unknown and nested inference paths get
+  Next's HTML 404 from the production build.
+- `scripts/docker-smoke.sh`: adds invalid `POST /api/suggest` → `INVALID_INPUT`, and five paths
+  that must get Next's HTML 404 rather than FastAPI's JSON 404. Fails when the web image is
+  rebuilt with the old catch-all.
+- Docs: `CHANGELOG.md`, `CLAUDE.md`, `api/README.md`, `docs/vercel.md`, `docs/docker.md`, Phase 05 architecture,
+  HTTP contract, deployment, verification matrix and README.
+
+| Check | Result |
+| --- | --- |
+| `pnpm install --frozen-lockfile`, `next typegen`, `tsc --noEmit`, `pnpm lint` | Clean |
+| `pnpm test` | 22 files, 408 passed |
+| `pnpm build` | Passed |
+| `pnpm e2e` | 19 passed (11 existing, 8 new) |
+| `uv sync --locked`, `ruff check`, `ruff format --check` | Clean |
+| `uv run pytest -q` | 66 passed |
+| `docker compose config --quiet`, `build`, `up -d --wait`, `scripts/docker-smoke.sh` | Passed (11 checks) |
+| Vercel preview | **Not run**: no preview deployment or CLI in this environment |
+| Live OpenRouter request | **Not run**; all inference POSTs were invalid bodies |
+
+Open: verify routing on a Vercel preview (checklist in `docs/vercel.md` Caveats); the static test
+uses Next's matcher for Vercel sources, which is a close approximation, not Vercel itself. The
+Better Auth / Prisma version checks from the 05-I/A spike move to 05-I/B and 05-I/C. Next
+milestone: 05-I/B, PostgreSQL and Prisma foundation.
 
 ## Release v0.1.0 (2026-10-16)
 

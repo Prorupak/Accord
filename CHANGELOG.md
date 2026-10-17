@@ -6,6 +6,13 @@ All notable changes are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Only `/api/map`, `/api/suggest` and `/api/capabilities` are routed to FastAPI, in both
+  `web/next.config.ts` and `vercel.json`. Every other `/api/*` path is now handled by Next.js
+  (currently a 404), reserving it for the planned auth and project routes. Inference contracts
+  are unchanged.
+
 ## [0.1.0] - 2026-10-16
 
 ### Added

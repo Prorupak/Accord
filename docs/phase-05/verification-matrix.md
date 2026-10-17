@@ -14,9 +14,9 @@
 
 | ID | Layer | Test | Expected |
 |---|---|---|---|
-| P05-T01 | route | Next local `/api/auth/*` | reaches Next Better Auth, never FastAPI |
-| P05-T02 | route | Next local `/api/map`, `/api/suggest` | reaches original FastAPI; unchanged schemas |
-| P05-T03 | deploy | Vercel preview auth + inference routes | correct service in each case |
+| P05-T01 | route | Next local `/api/auth/*` | reaches Next Better Auth, never FastAPI. *05-I/A: never-FastAPI part passing (Next 404 in Vitest, Playwright, Docker smoke); Better Auth not built.* |
+| P05-T02 | route | Next local `/api/map`, `/api/suggest` | reaches original FastAPI; unchanged schemas. *05-I/A: passing (Vitest, Docker smoke).* |
+| P05-T03 | deploy | Vercel preview auth + inference routes | correct service in each case. *05-I/A: static test of `vercel.json` passing; preview pending.* |
 | P05-T04 | DB | clean schema migrate then restart | migrations idempotent; persisted data intact |
 | P05-T05 | auth | signup toggle off/on | disabled rejects server-side; enabled creates session |
 | P05-T06 | auth | sign-out/expiry | revoked session cannot access protected resource |

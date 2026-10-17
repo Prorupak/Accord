@@ -43,8 +43,8 @@ cd api && uv run python -m app
 cd web && npm run dev
 ```
 
-`web/next.config.ts` rewrites `/api/*` to the FastAPI server (`ACCORD_API_ORIGIN`, default
-`http://127.0.0.1:8000`). UI code calls `/api/map`, `/api/suggest` and `/api/capabilities` on
+`web/next.config.ts` rewrites `/api/map`, `/api/suggest` and `/api/capabilities` (only these) to
+the FastAPI server (`ACCORD_API_ORIGIN`, default `http://127.0.0.1:8000`). UI code calls `/api/map`, `/api/suggest` and `/api/capabilities` on
 its own origin, so no CORS is configured.
 
 ## Endpoints
