@@ -84,3 +84,19 @@ rewrites `AGENTS.md`; commit it rather than reverting it.
 
 The live smoke test in `api/README.md` makes a real OpenRouter request and spends quota. Run it
 only with explicit go-ahead.
+
+## Phase 05 platform extension (proposed until merged)
+
+Before implementing identity, workspace, PostgreSQL or project persistence, read
+`docs/phase-05/README.md`, `docs/phase-05/architecture.md` and the relevant ADR/contract. The docs
+are proposed architecture until code/tests verify them.
+
+Preserve existing browser-owned deterministic reconciliation and guest Import → Map → Review →
+Export. FastAPI still owns the existing bounded inference endpoints. Next.js will own
+authenticated project APIs and Better Auth; verify local and Vercel routing before deploying.
+
+Reuse `.claude/skills/accord-design-system/` for UI; invoke project skills
+`accord-platform-architecture`, `accord-auth-authorization`, `accord-persistence-review`,
+`accord-platform-verification` as relevant. `web/AGENTS.md` Next.js version rules still apply.
+Never run live OpenRouter smoke tests, destructive migrations or public signup without explicit
+approval.
