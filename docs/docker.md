@@ -146,11 +146,12 @@ an allowed origin. Unset (the default, and every non-Docker run), behaviour is a
 - The base `compose.yaml` still has no database or volumes: the API is stateless and the browser
   owns all guest data (spec §5). PostgreSQL is opt-in through `compose.db.yaml`, below.
 
-## Account database (opt-in, Phase 05-I/B)
+## Account database (opt-in, Phase 05-I/B; accounts since 05-I/C1)
 
-`compose.db.yaml` adds PostgreSQL and a one-off migration runner. **Nothing in the app reads or
-writes the database yet**: there is no login, no project API and no save/reopen (Phase 05-I/C and
-05-I/D). Guest mode is plain `docker compose up` and never needs it.
+`compose.db.yaml` adds PostgreSQL, a one-off migration runner and the Better Auth settings for
+`web`. The database holds accounts and sessions only: there is no login UI, no project API and no
+save/reopen yet (Phase 05-I/C2–C4 and 05-I/D). Guest mode is plain `docker compose up` and never
+needs it.
 
 It is a separate file, not a Compose profile, because Compose interpolates required variables
 (`${POSTGRES_PASSWORD:?}`) for every service in a file, including inactive profiles. A profile
@@ -160,7 +161,8 @@ would make guest `up` demand a database password.
 | --- | --- | --- |
 | `db` | `postgres:18.6-bookworm` | Named volume `accord-db` at `/var/lib/postgresql` (PostgreSQL 18 keeps PGDATA in `18/docker` under it). `expose` only, **no host port**. `pg_isready` health check. `cap_drop: ALL` plus `CHOWN, DAC_OVERRIDE, SETGID, SETUID` (the minimum that starts and restarts; tested), `no-new-privileges`. Not `read_only`: it writes its data volume. |
 | `migrate` | `accord-migrate:local` (`web/Dockerfile` target `migrate`) | Profile `migrate`, so `up` never starts it. Waits for a healthy `db`, runs `prisma migrate deploy` on the committed SQL, exits. Read-only root, `cap_drop: ALL`. |
-| `web` | unchanged | Gets `DATABASE_URL` at runtime. Does **not** depend on `db`: guest pages work with the database stopped. |
+| `migrate` (bootstrap) | same image | `run --rm -T migrate node scripts/create-account.mjs --email …` creates an account (below). |
+| `web` | unchanged | Gets `DATABASE_URL`, `BETTER_AUTH_SECRET` (from `.env`), `BETTER_AUTH_URL=http://localhost:3000` and `ACCORD_SIGNUP_ENABLED` (default `false`) at runtime. Empty secret → `/api/auth/*` answers 503 `NOT_CONFIGURED`. Does **not** depend on `db`: guest pages work with the database stopped. |
 | `api` | unchanged | Gets no database or auth variables. |
 
 ```sh
@@ -168,7 +170,9 @@ cp .env.example .env                    # once; set POSTGRES_PASSWORD (e.g. open
 DB="-f compose.yaml -f compose.db.yaml"
 docker compose $DB up -d --wait db      # start PostgreSQL
 docker compose $DB run --rm migrate     # apply committed migrations (safe to repeat)
-docker compose $DB up -d --build        # web + api (+ db) with DATABASE_URL set on web
+docker compose $DB run --rm migrate node scripts/create-account.mjs --email you@example.test
+                                        # prompts for the password (hidden; ≥ 12 characters)
+docker compose $DB up -d --build        # web + api (+ db) with DATABASE_URL and auth set on web
 docker compose $DB exec db psql -U accord accord     # local inspection; no published port
 docker compose $DB down                 # stop; the accord-db volume and its data stay
 ```
@@ -187,7 +191,24 @@ Prisma migrations are forward-only. To undo a bad migration, restore a backup ta
 (`accord-dbcheck`) with a throwaway password and synthetic rows: first migrate, no host port,
 insert, `down`/`up` with the volume kept, rows still there, second migrate is a no-op, then
 `pg_dump`/`pg_restore` into a scratch database. It deletes only its own volume on exit and never
-touches the `accord` project's data.
+touches the `accord` project's data. It then runs the account flow on the real web image: bootstrap
+with signup disabled, signup rejected, foreign-Origin sign-in and sign-out rejected, wrong password
+denied, cookie attributes, session stored in PostgreSQL, sign-out revokes the replayed cookie, and
+no password or secret in the web logs.
+
+### Accounts (Phase 05-I/C1)
+
+Set `BETTER_AUTH_SECRET` in the root `.env` (`openssl rand -base64 32`; at least 32 characters).
+Signup stays off: there is no email verification or password reset, so anyone who can reach the
+page could register an address they do not own. Create accounts with the bootstrap command above.
+It uses Better Auth's own sign-up (its scrypt hashing), reads the password from a hidden prompt or
+the first line of stdin (`printf '%s\n' "$PW" | docker compose $DB run --rm -T migrate node
+scripts/create-account.mjs --email …`), never from arguments, prints only `created <email>`, and
+refuses an existing address. There is no sign-in page yet (Phase 05-I/C4); the endpoints are
+Better Auth's under `/api/auth/*` (see `docs/phase-05/http-contracts.md`).
+
+`ACCORD_SIGNUP_ENABLED=true` opens `POST /api/auth/sign-up/email` to anyone who can reach the
+server. Use it only on a private network, and set it back to `false` afterwards.
 
 ### Backup and restore
 
@@ -211,8 +232,11 @@ backed up or restored.
 
 ### Known limitations
 
-- One database role (`accord`, the image's superuser) serves migrations and, later, the app. A
-  separate least-privilege application role is planned for Phase 05-I/C.
+- One database role (`accord`, the image's superuser) serves migrations and the app's auth
+  queries. A separate least-privilege application role is planned for Phase 05-I/C2. Do not expose
+  account mode publicly until then.
+- Auth rate limits are keyed on `x-forwarded-for`. The stack binds `127.0.0.1:3000` only; put any
+  public exposure behind a reverse proxy that overwrites that header, or limits can be bypassed.
 - The image is pinned by tag, not digest.
 - No connection pooling or TLS settings yet; both matter for hosted deployments (`docs/vercel.md`).
 

@@ -2,6 +2,52 @@
 
 Last updated: 2026-10-17
 
+## Phase 05-I/C1 (2026-10-17): Better Auth and session foundation
+
+Done on `feat/phase-05-i-c1-better-auth` (base `develop` `152b939`, PR #27 merged). Email/password
+sign-in with PostgreSQL sessions on `/api/auth/*`; no UI, workspaces or project API. ADR-0001/0002/
+0003 remain Proposed. Details: `docs/phase-05/auth-authorization.md`, HTTP contract:
+`docs/phase-05/http-contracts.md`.
+
+- `better-auth` 1.7.10 moved to `dependencies` (same version). Prisma adapter on the existing
+  `getDb()` client. No other new dependency.
+- `web/src/server/auth.ts`: `readAuthConfig` (fail closed), lazy `getAuth()`, `getCurrentSession`.
+  `web/app/api/auth/[...all]/route.ts`: Better Auth handler plus 503 `NOT_CONFIGURED` /
+  `STORAGE_UNAVAILABLE`.
+- Found in the pinned package and handled: missing secret falls back to a public placeholder
+  outside production (Accord refuses instead); Origin/CSRF checks are skipped when `NODE_ENV=test`
+  (`disableOriginCheck: false` set; the Origin tests failed before it); rate limiting is
+  production-only by default (enabled explicitly, database storage).
+- Migration `20261017062627_auth_rate_limit`: one `rateLimit` table + unique `key` index, generated
+  with `pnpm dlx auth@1.7.10 generate` (it kept the Accord models) and reviewed.
+- `web/scripts/create-account.mjs`: operator bootstrap through Better Auth's `signUpEmail`;
+  shipped in the `migrate` image.
+- Compose overlay passes `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `ACCORD_SIGNUP_ENABLED` to `web`
+  only. Routing E2E and Docker smoke now expect 503 `NOT_CONFIGURED` JSON from Next for
+  `/api/auth/*` (was Next HTML 404); the other Next-404 and FastAPI checks are unchanged.
+- CI: new `web` step fails if auth/DB identifiers appear in `.next/static` (and checks they are in
+  `.next/server`, so the pattern still means something). Job names unchanged, no secrets.
+
+| Check | Result |
+| --- | --- |
+| `tsc --noEmit`, `pnpm lint` | Clean |
+| `pnpm test` | 22 files, 408 passed (unchanged) |
+| `pnpm build` without `DATABASE_URL`/auth env | Passed; `/` static, `/api/auth/[...all]` dynamic; auth code in `.next/server` only |
+| `pnpm test:db` (PostgreSQL 18.6 container) | 40 passed: 12 schema (table list now includes `rateLimit`) + 28 auth (matrix C1-02…C1-19, C1-25, https cookies, `getCurrentSession`) |
+| `pnpm e2e` (no DB, no auth env) | 19 passed |
+| `uv run pytest -q`, ruff check/format | 66 passed, clean (API untouched) |
+| `docker compose config` (base and overlay), `build`, `up --wait`, `scripts/docker-smoke.sh` | Passed |
+| Smoke with the DB overlay, PostgreSQL never started, no secret | Passed |
+| `scripts/docker-db-check.sh` | 15 checks passed: 6 database + bootstrap, signup rejected, foreign Origin, wrong password, cookie attributes, session lookup, session row, sign-out revocation, no secrets in web logs |
+| Vercel preview, hosted database | **Not run** |
+| Live OpenRouter request | **Not run** |
+
+Open (blocks public account mode): least-privilege DB role (C2), a client-IP header the client
+cannot forge (Next keeps a client-sent `x-forwarded-for`), hosted connection pooling, preview
+check. Sign-in/get-session bodies include the session token (Better Auth contract). Signup when
+enabled reveals existing addresses. Next milestone: 05-I/C2, personal workspace provisioning and
+least-privilege database access.
+
 ## Phase 05-I/B (2026-10-17): PostgreSQL and Prisma foundation
 
 Done on `feat/phase-05-i-b-postgres-prisma` (base `develop` `f5666bb`). Schema, initial migration,

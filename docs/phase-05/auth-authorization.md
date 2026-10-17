@@ -1,6 +1,22 @@
 # Phase 05 — Authentication, authorization and security
 
-**Status: Proposed.** This is a security contract for future Phase 05-I implementation. It is not a claim v0.1.0 has authenticated endpoints.
+**Status: Proposed** (ADRs 0001–0003 still Proposed). This is a security contract for Phase 05-I. The login part is implemented as of 05-I/C1 (below); authorization of product routes is not.
+
+## Implemented in 05-I/C1
+
+- **Versions:** `better-auth` 1.7.10 (runtime dependency), `better-auth/adapters/prisma` on the existing Prisma 7.10.1 client from `getDb()`. No other auth library.
+- **Server:** `web/src/server/auth.ts` (`server-only`). `getAuth()` builds one instance on first use and returns `null` unless `readAuthConfig` accepts the environment, so the homepage, `next build` and guest mode never read auth settings or open a connection. Better Auth's own fallback to a placeholder secret outside production can therefore never apply.
+- **Route:** `web/app/api/auth/[...all]/route.ts`, Node.js runtime (the default; `export const runtime` is rejected under `cacheComponents`), `GET`/`POST` straight to `auth.handler`. It adds only `NOT_CONFIGURED`/`STORAGE_UNAVAILABLE` and `Cache-Control: private, no-store`.
+- **Sessions:** database sessions, Better Auth defaults (7-day expiry, refreshed after 1 day of use). `session.cookieCache` is explicitly off, so every read checks PostgreSQL and sign-out or expiry applies to the next request.
+- **Cookies:** `better-auth.session_token` (signed `token.signature`), HttpOnly, SameSite=Lax, Path=/, host-only. `Secure` with the `__Secure-` prefix exactly when `BETTER_AUTH_URL` is https. No cross-subdomain cookies, no proxy-header base URL.
+- **Origins/CSRF:** `trustedOrigins` is the single `BETTER_AUTH_URL` origin, no wildcards. `advanced.disableOriginCheck: false` is set because Better Auth 1.7.10 otherwise skips Origin checks whenever `NODE_ENV=test`. POSTs with a cookie or an `Origin` header from another origin get 403.
+- **Signup:** `emailAndPassword.disableSignUp` unless `ACCORD_SIGNUP_ENABLED` is exactly `true`; Better Auth checks it inside the sign-up endpoint, so there is no alternate path. Not safe to enable publicly: no email verification, reset or recovery.
+- **Bootstrap:** `web/scripts/create-account.mjs` runs Better Auth's own `signUpEmail` in a one-off process (separate instance, autoSignIn off, minimum 12-character password) against `DATABASE_URL`. Password from a hidden prompt or stdin, never argv; no HTTP route; refuses existing addresses.
+- **Rate limits:** `storage: "database"` (`rateLimit` table, migration `20261017062627_auth_rate_limit`), atomic conditional increments shared by every instance on the database. Sign-in 5 and sign-up 3 per 60 s, other auth paths 100 per 10 s, per client IP from single-value `x-forwarded-for`. Spoofable when clients reach Next directly; see `deployment-operations.md`.
+- **Enumeration:** wrong password and unknown email return the same 401 `INVALID_EMAIL_OR_PASSWORD`. Signup (when enabled) still reveals an existing address.
+- **Logs:** Better Auth logger at `warn`, so emails logged at info level are dropped; warnings say "Invalid password"/"User not found" without the address. Database failures log the host and port, never the password.
+- **Helper for C2/C3:** `getCurrentSession(headers)` → `authenticated` (Better Auth `{user, session}`) / `unauthenticated` / `unavailable`. No ownership checks or roles.
+- **Not built:** account UI (C4), workspaces and least-privilege DB role (C2), project API (C3), email verification, password reset, account deletion.
 
 ## Trust model
 

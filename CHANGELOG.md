@@ -8,6 +8,13 @@ All notable changes are recorded here. The format follows
 
 ### Added
 
+- Account foundation (no UI yet): Better Auth 1.7.10 email/password sign-in on
+  `/api/auth/*` with PostgreSQL sessions, sign-out revocation, Origin/CSRF checks always on, and
+  database-backed rate limits (sign-in 5/min, sign-up 3/min per client IP; new `rateLimit` table).
+  Signup is off unless `ACCORD_SIGNUP_ENABLED=true`; `web/scripts/create-account.mjs` creates
+  accounts for operators. Without `DATABASE_URL`/`BETTER_AUTH_SECRET`/`BETTER_AUTH_URL` the auth
+  route answers 503 `NOT_CONFIGURED` and guest mode is unchanged. No workspaces, projects, email
+  verification or password reset.
 - PostgreSQL foundation (no user-facing change): Prisma ORM 7.10.1 with the pg driver adapter,
   Better Auth-generated `user`/`session`/`account`/`verification` tables and Accord's `workspace`,
   `project` and `reconciliation_snapshot` tables in one reviewed initial migration. Nothing in the
