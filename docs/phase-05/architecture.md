@@ -19,7 +19,7 @@ flowchart LR
 - Browser owns CSV parsing, identity hashes, mapping confirmation, decisions, quantity arithmetic and all three artifacts.
 - FastAPI receives bounded fields for AI inference only, behind a same-origin rewrite. It does not store projects or own accepted matches.
 - `replayAudit` verifies consistency of `AuditV1` and returns canonical CSV rows, not a hydrated `ReconciliationState`.
-- Existing root `vercel.json` and `web/next.config.ts` route **all** `/api/*` to FastAPI. This conflicts with planned Next auth/project routes and must be corrected explicitly.
+- Root `vercel.json` and `web/next.config.ts` route only `/api/map`, `/api/suggest` and `/api/capabilities` to FastAPI (implemented in 05-I/A; Vercel preview check pending). Every other `/api/*` path is Next's.
 - Docker currently runs a hardened web and API pair. No database or account service exists.
 
 ## B. Target architecture for v0.2.0 (proposed)
@@ -60,9 +60,9 @@ flowchart TB
 
 ## D. Route ownership, critical integration
 
-Current catch-all rewrites must become allowlists. In local Next and Docker, rewrite **only** existing Python paths: `/api/map`, `/api/suggest`, `/api/capabilities`. Serve `/api/auth/[...all]` and `/api/projects/...` as Next Node route handlers.
+**Implemented (05-I/A):** both layers are allowlists. In local Next and Docker, `rewrites()` forwards **only** `/api/map`, `/api/suggest`, `/api/capabilities`. Root Vercel services configuration lists those three exact paths for `api`, then `/(.*)` for `web`. Vercel evaluates top-level rewrites in order and routing into a service is final, so `/api/auth/*` and `/api/projects/*` already reach `web` without their own rules. Static tests (`web/src/routing/apiRouting.test.ts`), Playwright (`web/e2e/routing.e2e.ts`) and `scripts/docker-smoke.sh` cover this.
 
-In root Vercel services configuration, route specific Next auth/project paths **before** Python inference paths and Next catch-all. Prove preview routing; do not assume a rewrite inside Next can override an outer Vercel rule. A route that accidentally hits Python is a release blocker.
+**Planned:** serve `/api/auth/[...all]` and `/api/projects/...` as Next Node route handlers. Prove preview routing; do not assume a rewrite inside Next can override an outer Vercel rule. A route that accidentally hits Python is a release blocker.
 
 ## E. Planned server-only code placement
 

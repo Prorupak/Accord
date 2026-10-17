@@ -5,12 +5,24 @@
 
 | Service | Root | Public path |
 | --- | --- | --- |
-| `api` (FastAPI, `app/main.py:app`) | `api/` | `/api/*` |
-| `web` (Next.js) | `web/` | everything else |
+| `api` (FastAPI, `app/main.py:app`) | `api/` | `/api/map`, `/api/suggest`, `/api/capabilities` (exact) |
+| `web` (Next.js) | `web/` | everything else, including any other `/api/*` path |
 
 The browser calls `/api/map`, `/api/suggest` and `/api/capabilities` on its own origin. Vercel
 passes the path through unchanged, so `api` must be public. No service calls another from the
-server, so there are no bindings. `/health` is not exposed.
+server, so there are no bindings. `/health`, `/docs` and `/openapi.json` are not exposed.
+
+## Two routing layers
+
+- **Root `vercel.json`** is the outer router on Vercel. Its `rewrites` are evaluated in order and
+  the first match picks the service; routing into a service is final, with no fallback to later
+  rules. The three exact inference rules come first, then `/(.*)` sends everything else to `web`.
+- **`web/next.config.ts` `rewrites()`** is the proxy for `pnpm dev`, `next start` and Docker, where
+  Next is the only public entry point. It forwards the same three paths to `ACCORD_API_ORIGIN`.
+
+On Vercel the Next rewrite never sees inference traffic, and a Next rewrite cannot override the
+outer router. Change both together. `web/src/routing/apiRouting.test.ts` checks both against the
+same path lists; future `/api/auth/*` and `/api/projects/*` handlers are Next's in both layers.
 
 ## Environment variables
 
@@ -34,3 +46,7 @@ Docker keep working as before through the Next rewrite in `web/next.config.ts`.
 - Fluid compute's default maximum duration (300 s) covers the 45 s inference deadline.
 - Not yet checked on a real deploy: whether the function receives `http.disconnect` (the Cancel
   flow needs it) and whether it sees the public `Host` header.
+- The explicit inference allowlist (Phase 05-I/A) has not been checked on a preview deploy yet.
+  Before merging auth work, confirm on a preview: `/api/capabilities` returns the API JSON, `POST
+  {}` to `/api/map` and `/api/suggest` returns 400 `INVALID_INPUT`, and `/api/auth/session`,
+  `/api/projects` and an unknown `/api/*` path return Next's HTML 404, not `{"detail":"Not Found"}`.

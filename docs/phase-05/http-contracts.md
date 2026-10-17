@@ -14,7 +14,7 @@
 | `/api/projects/[id]/snapshots` | Next Node / Prisma | Planned |
 | `/sign-in`, `/sign-up`, `/workspace`, `/workspace/projects/[id]` | Next pages | Planned |
 
-**Required prerequisite:** current Next rewrite is `{source:'/api/:path*', destination:'.../api/:path*'}` and root `vercel.json` forwards `/api/(.*)` to FastAPI. Replace catch-all inference routing with explicit allowlisted FastAPI paths and specific Next routes before deploying auth. Verify real preview requests; do not rely on `web` route-handler code alone.
+**Routing prerequisite (implemented in 05-I/A):** the Next rewrite and root `vercel.json` forward only the three exact FastAPI paths; every other `/api/*` path, including `/api/auth/*` and `/api/projects/*`, is handled by Next (currently its 404). Still required before deploying auth: verify real preview requests; do not rely on `web` route-handler code alone.
 
 ## Authentication
 

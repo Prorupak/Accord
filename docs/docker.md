@@ -10,7 +10,7 @@ non-Docker commands in `CLAUDE.md` still work unchanged.
 
 ```
 browser ──► 127.0.0.1:3000 ──► web (node server.js, Next.js standalone)
-                                 │  /api/* rewrite, baked at build time
+                                 │  /api/{map,suggest,capabilities} rewrite, baked at build time
                                  ▼
                                api:8000 (uvicorn, internal network only)
                                  │
@@ -69,9 +69,12 @@ docker inspect --format '{{.State.Health.Status}}' "$(docker compose ps -q api)"
 docker port "$(docker compose ps -q api)"         # empty: the API publishes no host port
 ```
 
-`scripts/docker-smoke.sh` runs these checks. It also POSTs `{}` to `/api/map` through the proxy and
-expects 400 `INVALID_INPUT` from schema validation. That proves the proxied Host and Origin pass the
-API guard without calling OpenRouter. It never sends a real analysis request.
+`scripts/docker-smoke.sh` runs these checks. It also POSTs `{}` to `/api/map` and `/api/suggest`
+through the proxy and expects 400 `INVALID_INPUT` from schema validation. That proves the proxied
+Host and Origin pass the API guard without calling OpenRouter. It never sends a real analysis
+request. Finally it checks that `/api/auth/session`, `/api/projects`, `/api/projects/example/snapshots`,
+`/api/random` and `/api/map/unknown` get Next's HTML 404, not FastAPI's JSON 404: only the three
+inference paths are proxied.
 
 Do not use `curl 127.0.0.1:8000` to check exposure. A local `uv run python -m app` may be listening
 there, and that is not the container.
@@ -112,11 +115,11 @@ an allowed origin. Unset (the default, and every non-Docker run), behaviour is a
 | --- | --- |
 | `Bind for 127.0.0.1:3000 failed: port is already allocated` | `pnpm dev` or another server holds 3000. Stop it. |
 | `web` never starts, `api` is `unhealthy` | `docker compose logs api`. The image failed to boot or bind; rebuild with `docker compose build api`. |
-| Every `/api/*` call returns 500 `UPSTREAM_ERROR` | Settings failed to load, e.g. an invalid `API_INTERNAL_HOST` or `API_PORT` in `api/.env`. `/health` does not read settings, so the container still reports healthy. |
+| Every inference call returns 500 `UPSTREAM_ERROR` | Settings failed to load, e.g. an invalid `API_INTERNAL_HOST` or `API_PORT` in `api/.env`. `/health` does not read settings, so the container still reports healthy. |
 | `/api/capabilities` returns `"configured": false`, analysis gives 503 `NOT_CONFIGURED` | `api/.env` missing or key/model empty. Edit it, then `docker compose up -d` (recreates `api`; no rebuild needed). |
 | 400 `Unexpected Host header` | `API_INTERNAL_HOST` does not match the service name, or the image was built with a different `ACCORD_API_ORIGIN`. |
 | 403 `Origin not allowed` | The page was opened on an origin other than `FRONTEND_ORIGIN`. Use `http://localhost:3000`, not `http://127.0.0.1:3000`, or change both. |
-| `/api/*` hits the wrong host after editing `ACCORD_API_ORIGIN` | The rewrite is baked at build time. `docker compose build web`. |
+| Inference calls hit the wrong host after editing `ACCORD_API_ORIGIN` | The rewrite is baked at build time. `docker compose build web`. |
 | 409 `BUSY` | One inference at a time (spec). Wait or cancel the running request. |
 | `Cannot connect to the Docker daemon` | Start Docker Desktop. |
 

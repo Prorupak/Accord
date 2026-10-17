@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Smoke-checks a running `docker compose up -d` stack. Never calls the AI provider:
-# the only POST is an empty body that the API rejects during validation.
+# the only POSTs are empty bodies that the API rejects during validation.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 web=http://127.0.0.1:3000
@@ -24,4 +24,24 @@ case "$body" in
   *'"INVALID_INPUT"'*'Field required'*) echo "ok   POST /api/map reaches validation (Host/Origin accepted)" ;;
   *) fail "POST /api/map unexpected response: $body" ;;
 esac
+
+body=$(curl -sS -X POST -H 'content-type: application/json' -H 'origin: http://localhost:3000' \
+  --data '{}' "$web/api/suggest")
+case "$body" in
+  *'"INVALID_INPUT"'*'Field required'*) echo "ok   POST /api/suggest reaches validation (Host/Origin accepted)" ;;
+  *) fail "POST /api/suggest unexpected response: $body" ;;
+esac
+
+# Only the three inference routes are proxied. Anything else under /api/ must get Next's HTML 404,
+# not FastAPI's JSON {"detail":"Not Found"}: future auth/project routes must never reach Python.
+tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
+for path in /api/auth/session /api/projects /api/projects/example/snapshots /api/random /api/map/unknown; do
+  meta=$(curl -sS -o "$tmp" -w '%{http_code} %{content_type}' "$web$path")
+  case "$meta" in
+    '404 text/html'*) ! grep -q '"detail"' "$tmp" || fail "GET $path returned a FastAPI body" ;;
+    *) fail "GET $path expected Next 404 HTML, got: $meta" ;;
+  esac
+  echo "ok   GET $path is handled by Next, not proxied to FastAPI"
+done
 echo "all smoke checks passed"

@@ -34,7 +34,7 @@ These new documents **extend**, not retroactively rewrite, v0.1.0. A conflict in
 ## Phase workflow
 
 1. **05-0: Document**. Review these files and ADRs; freeze decisions and install agent skills. No production code.
-2. **05-I/A: Routing and compatibility spike**. Verify installed Better Auth / Prisma 7 versions and Next/Vercel routing precedence on a throwaway branch. Commit only demonstrated choices.
+2. **05-I/A: Routing and compatibility spike**. Verify installed Better Auth / Prisma 7 versions and Next/Vercel routing precedence on a throwaway branch. Commit only demonstrated choices. *Routing allowlist implemented (see `docs/progress.md`); Vercel preview check and the Better Auth / Prisma version checks are still open.*
 3. **05-I/B: PostgreSQL and migrations**. Introduce database/Compose and CI migration checks.
 4. **05-I/C: Auth, personal workspace and project metadata**. Prove authorization with two real DB users.
 5. **05-I/D: Immutable snapshots, validation and explicit save/restore**. Prove replay and conflicts.

@@ -7,7 +7,7 @@
 - `docker compose up -d --build` runs `web` and `api` on private `accord` network; only `127.0.0.1:3000` is published on host.
 - Web has read-only root FS, drops privileges and uses read-only production Next standalone output; API private on Docker network and has separate runtime OpenRouter key.
 - `ACCORD_API_ORIGIN` Next rewrite destination is baked into the web image at build time.
-- Root `vercel.json` routes all `/api/*` to Python, so the future Next Auth routes need explicit top-level routing changes.
+- Root `vercel.json` routes only `/api/map`, `/api/suggest`, `/api/capabilities` to Python and everything else to Next (05-I/A; preview check pending).
 - No data volume or migration runner exists.
 
 ## B. Proposed v0.2.0 Compose topology
@@ -45,7 +45,7 @@ Provide tracked `.env.example` files with placeholders, never usable secrets. Ch
 
 ## D. Hosted deployment/Vercel
 
-- Verify current Vercel Services routing against installed CLI/docs. Add Next-specific `/api/auth/*` and `/api/projects/*` rewrites before explicit FastAPI inference routes and catch-all.
+- Vercel Services evaluates top-level rewrites in order, first match wins, and does not fall back after entering a service (Vercel Services routing docs, checked 2026-10-17). Three exact inference rules then the `/(.*)` → `web` catch-all already send `/api/auth/*` and `/api/projects/*` to Next; no separate rules are needed. Confirm on a preview before an account-based release.
 - Provision persistent managed PostgreSQL independently. Do not use ephemeral container filesystem as storage.
 - Choose a documented DB connection pool strategy for serverless instances; measure connection exhaustion, don't assume a single in-process Prisma pool protects across many instances.
 - Run schema migration as a separate deploy step **before** enabling new account-backed traffic. A failed migration blocks rollout; no migration when a Next request arrives.

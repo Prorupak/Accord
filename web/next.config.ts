@@ -1,5 +1,8 @@
 import type { NextConfig } from "next";
 
+// The only FastAPI routes proxied through Next; every other /api/* path (auth, projects) is Next's.
+const INFERENCE_PATHS = ["/api/map", "/api/suggest", "/api/capabilities"] as const;
+
 const nextConfig: NextConfig = {
   /* config options here */
   experimental: {
@@ -13,7 +16,7 @@ const nextConfig: NextConfig = {
   // Same-origin proxy to the FastAPI backend (api/); keeps the Python host out of UI code.
   async rewrites() {
     const apiOrigin = process.env.ACCORD_API_ORIGIN ?? "http://127.0.0.1:8000";
-    return [{ source: "/api/:path*", destination: `${apiOrigin}/api/:path*` }];
+    return INFERENCE_PATHS.map((path) => ({ source: path, destination: `${apiOrigin}${path}` }));
   },
   partialPrefetching: true,
   turbopack: {
