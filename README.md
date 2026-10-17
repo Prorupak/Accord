@@ -50,6 +50,7 @@ No silent fuzzy matching. No hidden changes to source data. No unresolved rows d
 See [CONTRIBUTING.md](CONTRIBUTING.md), [SUPPORT.md](SUPPORT.md) and the
 [Code of Conduct](CODE_OF_CONDUCT.md). Report vulnerabilities privately, as described in
 [SECURITY.md](SECURITY.md). Changes are recorded in [CHANGELOG.md](CHANGELOG.md).
+Proposed (not shipped) v0.2 architecture notes live in [docs/phase-05](docs/phase-05/README.md).
 
 ### License
 
