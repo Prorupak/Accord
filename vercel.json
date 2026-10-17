@@ -12,7 +12,19 @@
   },
   "rewrites": [
     {
-      "source": "/api/(.*)",
+      "source": "/api/map",
+      "destination": {
+        "service": "api"
+      }
+    },
+    {
+      "source": "/api/suggest",
+      "destination": {
+        "service": "api"
+      }
+    },
+    {
+      "source": "/api/capabilities",
       "destination": {
         "service": "api"
       }
