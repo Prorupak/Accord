@@ -5,6 +5,8 @@ ARG NODE_IMAGE=node:24.22.0-bookworm-slim
 
 FROM ${NODE_IMAGE} AS deps
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+# openssl lets the @prisma/engines install script pick the right schema-engine build for `migrate`.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@10.16.1 --activate
 WORKDIR /repo/web
 COPY web/package.json web/pnpm-lock.yaml ./
@@ -19,7 +21,15 @@ ENV ACCORD_API_ORIGIN=${ACCORD_API_ORIGIN} \
     NEXT_TELEMETRY_DISABLED=1
 COPY fixtures /repo/fixtures
 COPY web ./
+# `pnpm build` runs `prisma generate` first; that needs the schema only, never a DATABASE_URL.
 RUN pnpm build
+
+# One-off migration runner (compose.db.yaml `migrate`): applies the committed SQL and exits.
+FROM deps AS migrate
+COPY web/prisma.config.ts ./
+COPY web/prisma ./prisma
+USER node
+CMD ["node_modules/.bin/prisma", "migrate", "deploy"]
 
 FROM ${NODE_IMAGE} AS runtime
 ENV NODE_ENV=production \
