@@ -33,10 +33,10 @@ case "$body" in
 esac
 
 # Only the three inference routes are proxied. Anything else under /api/ must get Next's HTML 404,
-# not FastAPI's JSON {"detail":"Not Found"}: future auth/project routes must never reach Python.
+# not FastAPI's JSON {"detail":"Not Found"}: project routes must never reach Python.
 tmp=$(mktemp)
 trap 'rm -f "$tmp"' EXIT
-for path in /api/auth/session /api/projects /api/projects/example/snapshots /api/random /api/map/unknown; do
+for path in /api/projects /api/projects/example/snapshots /api/random /api/map/unknown; do
   meta=$(curl -sS -o "$tmp" -w '%{http_code} %{content_type}' "$web$path")
   case "$meta" in
     '404 text/html'*) ! grep -q '"detail"' "$tmp" || fail "GET $path returned a FastAPI body" ;;
@@ -44,4 +44,12 @@ for path in /api/auth/session /api/projects /api/projects/example/snapshots /api
   esac
   echo "ok   GET $path is handled by Next, not proxied to FastAPI"
 done
+
+# /api/auth/* is Better Auth on Next. Without BETTER_AUTH_SECRET (this stack) it is NOT_CONFIGURED.
+meta=$(curl -sS -o "$tmp" -w '%{http_code} %{content_type}' "$web/api/auth/get-session")
+case "$meta" in
+  '503 application/json'*) grep -q '"NOT_CONFIGURED"' "$tmp" || fail "GET /api/auth/get-session body: $(cat "$tmp")" ;;
+  *) fail "GET /api/auth/get-session expected 503 NOT_CONFIGURED, got: $meta" ;;
+esac
+echo "ok   GET /api/auth/get-session is the unconfigured auth route on Next"
 echo "all smoke checks passed"
