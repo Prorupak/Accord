@@ -38,7 +38,12 @@ pnpm dev        # http://localhost:3000
 pnpm lint
 pnpm build
 npx tsc --noEmit
+pnpm generate   # Prisma client into src/generated/prisma (gitignored); pnpm build runs it too
+DATABASE_URL=postgresql://…/accord_test pnpm test:db   # disposable PostgreSQL only
 ```
+
+PostgreSQL (Phase 05-I/B) is schema and migrations only: `web/prisma/`, `web/src/server/db.ts`
+(lazy, server-only), opt-in `compose.db.yaml`. Guest mode never needs it. See `docs/docker.md`.
 
 Docker (repo root; see `docs/docker.md`): `docker compose up -d --build`, then
 `scripts/docker-smoke.sh`, `docker compose down`.

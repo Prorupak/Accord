@@ -93,6 +93,15 @@ there, and that is not the container.
   into `.next/routes-manifest.json`, so changing it means rebuilding. Setting it at runtime alone
   does nothing.
 - Runtime stage: only `.next/standalone`, `.next/static` and `public/`, owned by root and run as `node`.
+- `pnpm build` runs `prisma generate` first. It reads `web/prisma/schema.prisma` only; no
+  `DATABASE_URL` exists at build time and none is baked in. Nothing imports Prisma yet, so the
+  runtime image carries no Prisma code until Phase 05-I/C. When a server route does import
+  `src/server/db.ts`, Next traces the client and `pg` into the standalone output; that was
+  rehearsed with a temporary route (not committed) on 2026-10-17.
+- `migrate` target (`FROM deps`): `node_modules` plus `prisma.config.ts` and `prisma/`, runs as
+  `node`, command `prisma migrate deploy`. `openssl` is installed in `deps` so the
+  `@prisma/engines` install script picks the right schema-engine build
+  (`pnpm.onlyBuiltDependencies` in `web/package.json` allows that script).
 
 **api** (`api/Dockerfile`, build context = `api/`):
 - `python:3.13.16-slim` with uv 0.12.18 copied from `ghcr.io/astral-sh/uv:0.12.18`.
@@ -134,7 +143,78 @@ an allowed origin. Unset (the default, and every non-Docker run), behaviour is a
   needs an explicit volume.
 - **Debian slim over Alpine** avoids musl edge cases with Next's native SWC/lightningcss binaries,
   at some image size cost.
-- No database, Redis or volumes: the API is stateless and the browser owns all data (spec §5).
+- The base `compose.yaml` still has no database or volumes: the API is stateless and the browser
+  owns all guest data (spec §5). PostgreSQL is opt-in through `compose.db.yaml`, below.
+
+## Account database (opt-in, Phase 05-I/B)
+
+`compose.db.yaml` adds PostgreSQL and a one-off migration runner. **Nothing in the app reads or
+writes the database yet**: there is no login, no project API and no save/reopen (Phase 05-I/C and
+05-I/D). Guest mode is plain `docker compose up` and never needs it.
+
+It is a separate file, not a Compose profile, because Compose interpolates required variables
+(`${POSTGRES_PASSWORD:?}`) for every service in a file, including inactive profiles. A profile
+would make guest `up` demand a database password.
+
+| Service | Image | Notes |
+| --- | --- | --- |
+| `db` | `postgres:18.6-bookworm` | Named volume `accord-db` at `/var/lib/postgresql` (PostgreSQL 18 keeps PGDATA in `18/docker` under it). `expose` only, **no host port**. `pg_isready` health check. `cap_drop: ALL` plus `CHOWN, DAC_OVERRIDE, SETGID, SETUID` (the minimum that starts and restarts; tested), `no-new-privileges`. Not `read_only`: it writes its data volume. |
+| `migrate` | `accord-migrate:local` (`web/Dockerfile` target `migrate`) | Profile `migrate`, so `up` never starts it. Waits for a healthy `db`, runs `prisma migrate deploy` on the committed SQL, exits. Read-only root, `cap_drop: ALL`. |
+| `web` | unchanged | Gets `DATABASE_URL` at runtime. Does **not** depend on `db`: guest pages work with the database stopped. |
+| `api` | unchanged | Gets no database or auth variables. |
+
+```sh
+cp .env.example .env                    # once; set POSTGRES_PASSWORD (e.g. openssl rand -hex 24)
+DB="-f compose.yaml -f compose.db.yaml"
+docker compose $DB up -d --wait db      # start PostgreSQL
+docker compose $DB run --rm migrate     # apply committed migrations (safe to repeat)
+docker compose $DB up -d --build        # web + api (+ db) with DATABASE_URL set on web
+docker compose $DB exec db psql -U accord accord     # local inspection; no published port
+docker compose $DB down                 # stop; the accord-db volume and its data stay
+```
+
+Use a URL-safe password (hex is): it is embedded in `DATABASE_URL`. Rotating it after the first
+start needs `ALTER ROLE` inside the database; `POSTGRES_PASSWORD` only applies to a new volume.
+
+**`docker compose ... down --volumes` deletes the database.** Never use it as routine cleanup. CI
+uses it only on throwaway runners.
+
+Migrations run only when you run `migrate`; the web container never migrates on startup.
+Prisma migrations are forward-only. To undo a bad migration, restore a backup taken before it
+(below); do not use `prisma migrate reset` or `db push` on a database you care about.
+
+`scripts/docker-db-check.sh` rehearses the lifecycle under its own Compose project
+(`accord-dbcheck`) with a throwaway password and synthetic rows: first migrate, no host port,
+insert, `down`/`up` with the volume kept, rows still there, second migrate is a no-op, then
+`pg_dump`/`pg_restore` into a scratch database. It deletes only its own volume on exit and never
+touches the `accord` project's data.
+
+### Backup and restore
+
+Backups contain everything in the database: once accounts and snapshots exist, that includes
+email addresses, password hashes, sessions and **parsed source CSV cells** inside saved audits.
+Store dumps encrypted, with access limited like the database itself, and delete old ones on a
+schedule. The commands below read the password inside the container, so it never appears in your
+shell history.
+
+```sh
+DB="-f compose.yaml -f compose.db.yaml"
+docker compose $DB exec -T db pg_dump -U accord -d accord -Fc > accord-$(date +%F).dump
+# Restore rehearsal into a scratch database, never over the live one:
+docker compose $DB exec -T db createdb -U accord accord_restore_check
+docker compose $DB exec -T db pg_restore -U accord -d accord_restore_check --no-owner --exit-on-error < accord-YYYY-MM-DD.dump
+docker compose $DB exec -T db dropdb -U accord accord_restore_check
+```
+
+Only the synthetic rehearsal in `scripts/docker-db-check.sh` has been run. No real data has been
+backed up or restored.
+
+### Known limitations
+
+- One database role (`accord`, the image's superuser) serves migrations and, later, the app. A
+  separate least-privilege application role is planned for Phase 05-I/C.
+- The image is pinned by tag, not digest.
+- No connection pooling or TLS settings yet; both matter for hosted deployments (`docs/vercel.md`).
 
 ## Cloudflare
 
