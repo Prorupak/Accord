@@ -24,10 +24,12 @@ COPY web ./
 # `pnpm build` runs `prisma generate` first; that needs the schema only, never a DATABASE_URL.
 RUN pnpm build
 
-# One-off migration runner (compose.db.yaml `migrate`): applies the committed SQL and exits.
+# One-off operator image (compose.db.yaml `migrate`): applies the committed SQL and exits, or runs
+# scripts/create-account.mjs to bootstrap an account. Never part of the web runtime image.
 FROM deps AS migrate
 COPY web/prisma.config.ts ./
 COPY web/prisma ./prisma
+COPY web/scripts ./scripts
 USER node
 CMD ["node_modules/.bin/prisma", "migrate", "deploy"]
 
