@@ -2,6 +2,52 @@
 
 Last updated: 2026-10-17
 
+## Phase 05-I/B (2026-10-17): PostgreSQL and Prisma foundation
+
+Done on `feat/phase-05-i-b-postgres-prisma` (base `develop` `f5666bb`). Schema, initial migration,
+opt-in Compose database and CI checks only. **No app code reads or writes the database**: no
+login, no project API, no save/reopen. ADR-0001/0002/0003 remain Proposed (owner acceptance
+pending).
+
+- Versions (exact pins): `prisma`, `@prisma/client`, `@prisma/adapter-pg` 7.10.1 (npm `latest`
+  for `prisma` is already 8.0.0-rc; 7 was chosen deliberately), `pg` 8.23.1, `@types/pg` 8.23.1,
+  `server-only` 0.0.1, `better-auth` 1.7.10 (dev only, schema input), PostgreSQL
+  `postgres:18.6-bookworm`. No change to `"type"`, tsconfig target or Node version was needed.
+  Better Auth CLI is run on demand as `pnpm dlx auth@1.7.10`, not installed (it pulls Babel and
+  Prettier). `pnpm.onlyBuiltDependencies` allows `@prisma/engines`/`prisma` install scripts so the
+  schema engine exists in Docker.
+- `web/prisma/schema.prisma` + `prisma.config.ts`: generator `prisma-client` → `src/generated/prisma`
+  (gitignored); `pnpm build` = `prisma generate && next build`, no DB needed.
+- `web/prisma/migrations/20261017052138_init`: 7 tables, reviewed (no destructive SQL). Details and
+  on-delete choices in `docs/phase-05/data-model.md`.
+- `web/src/server/db.ts`: `server-only`, lazy `getDb()`; throws when `DATABASE_URL` is unset, never
+  falls back to a default DSN. Nothing imports it outside tests.
+- `compose.db.yaml`, `web/Dockerfile` `migrate` target, `scripts/docker-db-check.sh`,
+  `.env.example`, `web/.env.example`; CI `web` gets a Postgres service + `pnpm test:db`, CI `docker`
+  gets guest-with-DB-down smoke and the DB lifecycle check.
+
+| Check | Result |
+| --- | --- |
+| `pnpm install --frozen-lockfile`, `pnpm generate` (no DB), `next typegen`, `tsc --noEmit`, `pnpm lint` | Clean |
+| `pnpm test` | 22 files, 408 passed (unchanged) |
+| `pnpm build` without `DATABASE_URL` | Passed; no Prisma/pg code in `.next/static` |
+| `pnpm test:db` (PostgreSQL 18.6 container) | 12 passed: fresh deploy, repeat no-op, no drift, tables/indexes/jsonb, owner unique, orphan FKs, version/idempotency uniques, JSON round-trip, cascade, restrict |
+| `pnpm test:db` with a non-`_test` database | Refuses to run |
+| `pnpm e2e` | 19 passed |
+| `uv run pytest -q`, ruff check/format | 66 passed, clean (API untouched) |
+| `docker compose config` (base and overlay), `build`, `up --wait`, `scripts/docker-smoke.sh` | Passed |
+| Smoke with `DATABASE_URL` set and PostgreSQL never started | Passed |
+| `scripts/docker-db-check.sh` | 6 checks passed (migrate, no host port, insert, down/up persistence, re-migrate no-op, dump/restore) |
+| Documented host-piped `pg_dump`/`pg_restore` commands | Passed in a scratch Compose project |
+| Prisma query from the production web image | Passed via a temporary route (not committed): `{"workspaces":0}`; with db stopped the route 500s and `/` still serves |
+| Image history/env, container logs | No `DATABASE_URL`/password in images; password absent from logs; `api` has no DB variables |
+| Vercel preview, hosted database | **Not run**: no preview deployment in this environment |
+| Live OpenRouter request | **Not run** |
+
+Open: least-privilege application role, connection pooling/TLS for hosted DBs, digest pinning of
+the PostgreSQL image, Vercel preview check (carried from 05-I/A). Next milestone: 05-I/C, Better
+Auth handlers, personal workspace provisioning and owner-scoped project metadata.
+
 ## Phase 05-I/A (2026-10-17): API routing allowlist
 
 Done on `feat/phase-05-i-a-api-routing` (base `develop` `5b268e7`). Only `/api/map`,

@@ -6,6 +6,17 @@ All notable changes are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- PostgreSQL foundation (no user-facing change): Prisma ORM 7.10.1 with the pg driver adapter,
+  Better Auth-generated `user`/`session`/`account`/`verification` tables and Accord's `workspace`,
+  `project` and `reconciliation_snapshot` tables in one reviewed initial migration. Nothing in the
+  app reads or writes the database yet: no login, no saving or reopening projects.
+- Opt-in `compose.db.yaml` with PostgreSQL 18.6 (named volume, no host port) and a one-off
+  `migrate` service. Guest `docker compose up` is unchanged and needs no database.
+- `pnpm test:db` integration tests against a disposable PostgreSQL, and
+  `scripts/docker-db-check.sh` (migrate, restart persistence, dump/restore rehearsal), both in CI.
+
 ### Changed
 
 - Only `/api/map`, `/api/suggest` and `/api/capabilities` are routed to FastAPI, in both

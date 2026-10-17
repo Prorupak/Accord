@@ -26,6 +26,10 @@ same path lists; future `/api/auth/*` and `/api/projects/*` handlers are Next's 
 
 ## Environment variables
 
+The `web` build runs `prisma generate` (part of `pnpm build`), which needs no database. No route
+uses `DATABASE_URL` yet (Phase 05-I/B adds only the schema and migrations), so do not set it on
+Vercel until the auth phase; migrations will be a separate deploy step, never run by a request.
+
 Set these in the Vercel project: `OPENROUTER_API_KEY` and `OPENROUTER_MODEL`. You do not need
 `FRONTEND_ORIGIN`. The API host/origin guard trusts the hostnames Vercel provides in `VERCEL_URL`,
 `VERCEL_BRANCH_URL` and `VERCEL_PROJECT_PRODUCTION_URL`. If you attach a custom domain that is not

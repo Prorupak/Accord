@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String     @id
+  name          String
+  email         String
+  emailVerified Boolean    @default(false)
+  image         String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  workspace     Workspace?
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// Accord-owned models below. The Better Auth models above come from `auth generate`
+// (command in prisma/better-auth.schema.ts); only User.workspace was added by hand.
+
+/// One personal workspace per user (ADR-0003). Restrict: account deletion is not built yet,
+/// so deleting a user must never silently remove their projects.
+model Workspace {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  ownerId   String    @unique
+  owner     User      @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  projects  Project[]
+
+  @@map("workspace")
+}
+
+/// `version` is the storage sequence of saved snapshots (compare-and-set), not AuditV1.revision.
+model Project {
+  id          String                   @id @default(uuid(7)) @db.Uuid
+  workspaceId String                   @db.Uuid
+  workspace   Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  name        String
+  version     Int                      @default(0)
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  snapshots   ReconciliationSnapshot[]
+
+  @@index([workspaceId, updatedAt])
+  @@map("project")
+}
+
+/// Immutable by convention: rows are inserted, never updated (application-enforced, ADR-0002).
+/// `audit` is the unmodified AuditV1 document; the other columns are storage metadata.
+model ReconciliationSnapshot {
+  id                 String   @id @default(uuid(7)) @db.Uuid
+  projectId          String   @db.Uuid
+  project            Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  version            Int
+  idempotencyKey     String   @db.Uuid
+  audit              Json
+  auditSchemaVersion Int
+  configurationHash  String
+  domainRevision     Int
+  createdAt          DateTime @default(now())
+
+  @@unique([projectId, version])
+  @@unique([projectId, idempotencyKey])
+  @@index([projectId, createdAt])
+  @@map("reconciliation_snapshot")
+}

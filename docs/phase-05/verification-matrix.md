@@ -17,7 +17,7 @@
 | P05-T01 | route | Next local `/api/auth/*` | reaches Next Better Auth, never FastAPI. *05-I/A: never-FastAPI part passing (Next 404 in Vitest, Playwright, Docker smoke); Better Auth not built.* |
 | P05-T02 | route | Next local `/api/map`, `/api/suggest` | reaches original FastAPI; unchanged schemas. *05-I/A: passing (Vitest, Docker smoke).* |
 | P05-T03 | deploy | Vercel preview auth + inference routes | correct service in each case. *05-I/A: static test of `vercel.json` passing; preview pending.* |
-| P05-T04 | DB | clean schema migrate then restart | migrations idempotent; persisted data intact |
+| P05-T04 | DB | clean schema migrate then restart | migrations idempotent; persisted data intact. *05-I/B: passing (`tests/db/schema.dbtest.ts`: fresh + repeated deploy, no drift, constraints; `scripts/docker-db-check.sh`: restart persistence, re-migrate no-op).* |
 | P05-T05 | auth | signup toggle off/on | disabled rejects server-side; enabled creates session |
 | P05-T06 | auth | sign-out/expiry | revoked session cannot access protected resource |
 | P05-T07 | workspace | simultaneous first access | exactly one workspace per user |
@@ -31,9 +31,9 @@
 | P05-T15 | concurrency | two concurrent versions N | one N+1 and one 409; no lost update |
 | P05-T16 | idempotency | repeat same key/payload | one snapshot and same acknowledgement |
 | P05-T17 | stale UI | state edited during save | UI says unsaved; no false latest-saved indicator |
-| P05-T18 | privacy | guest flow without login | no project/upload request, no DB prerequisite |
+| P05-T18 | privacy | guest flow without login | no project/upload request, no DB prerequisite. *05-I/B: no-DB part passing (Docker smoke with no `DATABASE_URL`, and with it set while PostgreSQL is down; build without `DATABASE_URL`).* |
 | P05-T19 | confidentiality | project list and error responses | no audit JSON, source cell values, secrets or session tokens |
-| P05-T20 | ops | Compose down/up, backup and restore | preserved accounts/projects/snapshots and replays |
+| P05-T20 | ops | Compose down/up, backup and restore | preserved accounts/projects/snapshots and replays. *05-I/B: synthetic rows survive down/up and `pg_dump`/`pg_restore`; replay after restore needs 05-I/D.* |
 | P05-T21 | UX | mobile, keyboard, reduced motion, 200% zoom | usable focus, no page overflow/hidden actions |
 
 ## PR checkpoints

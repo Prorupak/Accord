@@ -1,6 +1,6 @@
 # Phase 05 — Deployment, self-hosting and operations
 
-**Status: Proposed.** Existing `compose.yaml`, `web/Dockerfile`, `api/Dockerfile`, root `vercel.json`, `docs/docker.md`, `docs/vercel.md` are shipped v0.1 configurations and are not modified by this pack.
+**Status: Partly implemented.** 05-I/B (2026-10-17) added the opt-in `compose.db.yaml` (PostgreSQL 18.6, named volume, health check, one-off `migrate` runner), the `migrate` target in `web/Dockerfile`, CI migration checks and the backup/restore rehearsal; see `docs/docker.md` "Account database". Auth, project APIs, a least-privilege app role and hosted database setup remain proposed. The base `compose.yaml` is unchanged.
 
 ## A. Current deployment shape (v0.1.0)
 
@@ -8,7 +8,7 @@
 - Web has read-only root FS, drops privileges and uses read-only production Next standalone output; API private on Docker network and has separate runtime OpenRouter key.
 - `ACCORD_API_ORIGIN` Next rewrite destination is baked into the web image at build time.
 - Root `vercel.json` routes only `/api/map`, `/api/suggest`, `/api/capabilities` to Python and everything else to Next (05-I/A; preview check pending).
-- No data volume or migration runner exists.
+- No data volume or migration runner in the base file; both are in `compose.db.yaml` (05-I/B).
 
 ## B. Proposed v0.2.0 Compose topology
 
@@ -79,13 +79,17 @@ Current valid commands:
  uv sync --locked && uv run pytest -q
 ```
 
-Planned post-implementation commands (not executable yet):
+Added in 05-I/B (executed; see `docs/progress.md`):
 
 ```sh
 cd web
 pnpm exec prisma validate
-pnpm exec prisma generate
-pnpm exec prisma migrate deploy  # only against selected DB with required env
+pnpm generate                    # no database needed
+DATABASE_URL=… pnpm exec prisma migrate deploy   # only against a database you selected
+DATABASE_URL=…/<name>_test pnpm test:db          # disposable server only
+# repo root
+scripts/docker-db-check.sh       # own Compose project, throwaway password, synthetic rows
+docker compose -f compose.yaml -f compose.db.yaml run --rm migrate
 ```
 
 ## G. Self-hosting release gate
