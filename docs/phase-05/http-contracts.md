@@ -8,17 +8,36 @@
 |---|---|---|
 | `/` | Next page / browser reconciliation | Exists; guest-capable |
 | `/api/map`, `/api/suggest`, `/api/capabilities` | FastAPI (same-origin proxy) | Exists; preserve contracts |
-| `/api/auth/[...all]` | Next Node / Better Auth | Planned |
+| `/api/auth/[...all]` | Next Node / Better Auth | Implemented (05-I/C1) |
 | `/api/projects` | Next Node / Prisma | Planned |
 | `/api/projects/[id]` | Next Node / Prisma | Planned |
 | `/api/projects/[id]/snapshots` | Next Node / Prisma | Planned |
 | `/sign-in`, `/sign-up`, `/workspace`, `/workspace/projects/[id]` | Next pages | Planned |
 
-**Routing prerequisite (implemented in 05-I/A):** the Next rewrite and root `vercel.json` forward only the three exact FastAPI paths; every other `/api/*` path, including `/api/auth/*` and `/api/projects/*`, is handled by Next (currently its 404). Still required before deploying auth: verify real preview requests; do not rely on `web` route-handler code alone.
+**Routing prerequisite (implemented in 05-I/A):** the Next rewrite and root `vercel.json` forward only the three exact FastAPI paths; every other `/api/*` path, including `/api/auth/*` and `/api/projects/*`, is handled by Next (`/api/auth/*` by Better Auth since 05-I/C1, the rest its 404). Still required before deploying auth: verify real preview requests; do not rely on `web` route-handler code alone.
 
 ## Authentication
 
 Better Auth's own handler owns `/api/auth/[...all]`, response shapes, cookie names and error semantics. Do not wrap or reinvent its session protocol. Next product routes read a verified Better Auth session server-side; a `User` ID in JSON/body is never trusted.
+
+Implemented in 05-I/C1 (Better Auth 1.7.10 contracts, verified by `web/tests/db/auth.dbtest.ts`):
+
+| Method and path | Result |
+|---|---|
+| `POST /api/auth/sign-in/email` `{email,password}` | 200 `{redirect,token,user}` + `better-auth.session_token` cookie; 401 `INVALID_EMAIL_OR_PASSWORD` for a wrong password or unknown email alike |
+| `GET /api/auth/get-session` | 200 `{session,user}`, or 200 `null` without a valid session |
+| `POST /api/auth/sign-out` | 200 `{success:true}`; deletes the session row and clears the cookie |
+| `POST /api/auth/sign-up/email` `{name,email,password}` | 400 `EMAIL_PASSWORD_SIGN_UP_DISABLED` unless `ACCORD_SIGNUP_ENABLED=true` |
+| any, foreign `Origin` | 403 `INVALID_ORIGIN` on POST with a cookie or an `Origin` header |
+| any, over the limit | 429 with `X-Retry-After` (sign-in 5, sign-up 3 per 60 s per client IP; others 100 per 10 s) |
+
+Accord adds only two outcomes around the handler, in the error envelope below: 503
+`NOT_CONFIGURED` when `DATABASE_URL`, `BETTER_AUTH_SECRET` (≥ 32 chars), `BETTER_AUTH_URL` (an
+http(s) origin) or `ACCORD_SIGNUP_ENABLED` (absent, `true` or `false`) is missing or invalid, and
+503 `STORAGE_UNAVAILABLE` for any thrown error or 5xx (database down), with no driver text. All
+auth responses carry `Cache-Control: private, no-store`. Successful sign-in and get-session bodies
+include the session token by Better Auth's contract; the cookie is HttpOnly, but script on the
+page could still read the token from those bodies.
 
 ## Proposed product API (v0.2.0)
 
@@ -54,6 +73,7 @@ Better Auth's own handler owns `/api/auth/[...all]`, response shapes, cookie nam
 | `PAYLOAD_TOO_LARGE` | 413 | Request exceeds Phase 05 cap |
 | `VERSION_CONFLICT` | 409 | Optimistic concurrency check failed |
 | `STORAGE_UNAVAILABLE` | 503 | DB unreachable (guest mode still works) |
+| `NOT_CONFIGURED` | 503 | Accounts not configured on this server (auth route, 05-I/C1) |
 | `INTERNAL_ERROR` | 500 | Generic internal failure; no sensitive details |
 
 Preserve existing FastAPI's separately documented `ApiError` codes without reinterpreting them as project errors.

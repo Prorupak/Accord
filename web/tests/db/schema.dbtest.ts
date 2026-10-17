@@ -1,39 +1,14 @@
-import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import pg from "pg";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "../../src/generated/prisma/client";
 import { getDb } from "../../src/server/db";
+import { scratchDatabase } from "./scratch";
 
-// DATABASE_URL names a disposable server whose database ends in `_test`. Each run migrates a
-// fresh, randomly named database on that server and drops it afterwards. Synthetic data only.
-const base = process.env.DATABASE_URL;
-if (!base || !new URL(base).pathname.endsWith("_test")) {
-  throw new Error("pnpm test:db needs DATABASE_URL pointing at a disposable database whose name ends in _test");
-}
-const dbName = `accord_${randomUUID().replaceAll("-", "").slice(0, 12)}_test`;
-const url = Object.assign(new URL(base), { pathname: `/${dbName}` }).toString();
-
-const admin = () => new pg.Client({ connectionString: base });
-const prisma = (...args: string[]) =>
-  execFileSync("node_modules/.bin/prisma", args, { env: { ...process.env, DATABASE_URL: url }, encoding: "utf8" });
-
+const { prisma } = scratchDatabase();
 let db: PrismaClient;
-
-beforeAll(async () => {
-  const c = admin();
-  await c.connect();
-  await c.query(`CREATE DATABASE "${dbName}"`);
-  await c.end();
-  process.env.DATABASE_URL = url;
-});
 
 afterAll(async () => {
   await db?.$disconnect();
-  const c = admin();
-  await c.connect();
-  await c.query(`DROP DATABASE IF EXISTS "${dbName}" WITH (FORCE)`);
-  await c.end();
 });
 
 describe("migrations", () => {
@@ -60,6 +35,7 @@ describe("migrations", () => {
       "_prisma_migrations",
       "account",
       "project",
+      "rateLimit",
       "reconciliation_snapshot",
       "session",
       "user",

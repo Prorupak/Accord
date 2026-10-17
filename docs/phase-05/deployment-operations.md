@@ -30,14 +30,14 @@ browser → localhost:3000 → web (Next; server-only auth and Prisma)
 - Python API **must not** receive `DATABASE_URL` or Better Auth session secret; proxy and validation behavior unchanged.
 - Handle DB-not-configured in local guest dev without eagerly crashing `web/app/page.tsx` or bundling server modules into client code.
 
-## C. Environment contract (names proposed; implementer confirms installed library requirements)
+## C. Environment contract (implemented in 05-I/C1; checked by `readAuthConfig` in `web/src/server/auth.ts`)
 
 | Variable | Where | Mandatory | Notes |
 |---|---|---|---|
 | `DATABASE_URL` | Next runtime + migration job | Account mode | PostgreSQL DSN; never client/build public env |
 | `BETTER_AUTH_SECRET` | Next runtime | Account mode | Strong random secret, no repo/CI plaintext |
 | `BETTER_AUTH_URL` | Next runtime | Account mode | External canonical origin, HTTPS production |
-| `ACCORD_SIGNUP_ENABLED` | Next runtime | Account mode | Default false on public deployment |
+| `ACCORD_SIGNUP_ENABLED` | Next runtime | Account mode | Absent/`false` → off; `true` → on; anything else → accounts NOT_CONFIGURED |
 | `ACCORD_API_ORIGIN` | Next Docker build / local Next dev | Inference proxy | Existing value, keep build-time caveat |
 | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | Python runtime only | AI optional | Existing project variables; no client exposure |
 
@@ -79,6 +79,15 @@ Current valid commands:
  uv sync --locked && uv run pytest -q
 ```
 
+Added in 05-I/C1 (executed; see `docs/progress.md`):
+
+```sh
+cd web
+DATABASE_URL=… node scripts/create-account.mjs --email you@example.test   # hidden password prompt
+# repo root
+docker compose -f compose.yaml -f compose.db.yaml run --rm migrate node scripts/create-account.mjs --email you@example.test
+```
+
 Added in 05-I/B (executed; see `docs/progress.md`):
 
 ```sh
@@ -91,6 +100,17 @@ DATABASE_URL=…/<name>_test pnpm test:db          # disposable server only
 scripts/docker-db-check.sh       # own Compose project, throwaway password, synthetic rows
 docker compose -f compose.yaml -f compose.db.yaml run --rm migrate
 ```
+
+## Account-mode exposure blockers (05-I/C1)
+
+Accounts work locally and in Docker, but **do not expose account mode publicly** until:
+
+1. The app connects with a least-privilege role, not the migration superuser (05-I/C2).
+2. The client-IP header used for rate limits is set by a proxy the client cannot bypass. Next's
+   own server keeps a client-supplied `x-forwarded-for`, so a directly exposed server lets an
+   attacker rotate fake IPs and evade the sign-in limit.
+3. A hosted deployment has a measured connection-pool plan and a preview check of `/api/auth/*`.
+4. Public signup stays off: there is no email verification or recovery.
 
 ## G. Self-hosting release gate
 

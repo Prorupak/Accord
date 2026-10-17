@@ -42,8 +42,13 @@ pnpm generate   # Prisma client into src/generated/prisma (gitignored); pnpm bui
 DATABASE_URL=postgresql://…/accord_test pnpm test:db   # disposable PostgreSQL only
 ```
 
-PostgreSQL (Phase 05-I/B) is schema and migrations only: `web/prisma/`, `web/src/server/db.ts`
-(lazy, server-only), opt-in `compose.db.yaml`. Guest mode never needs it. See `docs/docker.md`.
+PostgreSQL (Phase 05-I/B) holds the schema and migrations: `web/prisma/`, `web/src/server/db.ts`
+(lazy, server-only), opt-in `compose.db.yaml`. Better Auth (05-I/C1) lives in
+`web/src/server/auth.ts` (lazy `getAuth()`, `getCurrentSession(headers)`) and
+`web/app/api/auth/[...all]/route.ts`; it needs `DATABASE_URL`, `BETTER_AUTH_SECRET`,
+`BETTER_AUTH_URL`, else 503 `NOT_CONFIGURED`. Signup is off by default; operators create accounts
+with `node scripts/create-account.mjs --email …` (from `web/`). Guest mode never needs any of it.
+See `docs/docker.md` and `docs/phase-05/auth-authorization.md`.
 
 Docker (repo root; see `docs/docker.md`): `docker compose up -d --build`, then
 `scripts/docker-smoke.sh`, `docker compose down`.

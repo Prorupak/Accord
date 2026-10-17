@@ -64,7 +64,14 @@ jobs:
       - run: pnpm lint
       - run: pnpm test
       - run: pnpm build
-      # Fresh + repeated migrate deploy, drift check and constraint tests on a scratch database.
+      # C1-22: auth and database code must stay in server chunks, never in browser bundles.
+      - name: browser bundles hold no server auth code
+        run: |
+          pattern='BETTER_AUTH_SECRET|DATABASE_URL|PrismaClient|prismaAdapter|INVALID_EMAIL_OR_PASSWORD|disableSignUp'
+          grep -rqE "$pattern" .next/server || { echo "pattern no longer matches server chunks"; exit 1; }
+          ! grep -rlE "$pattern" .next/static
+      # Fresh + repeated migrate deploy, drift check and constraint tests on a scratch database,
+      # then the Better Auth security matrix (sign-in, sessions, signup policy, Origin, rate limits).
       - run: pnpm test:db
         env:
           DATABASE_URL: postgresql://postgres@127.0.0.1:5432/accord_test
